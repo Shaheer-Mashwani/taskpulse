@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
       enum: ["pending", "admin", "member"],
       default: "pending",
     },
+    company: { type: mongoose.Schema.Types.ObjectId, ref: "Company", default: null },
   },
   { timestamps: true }
 );

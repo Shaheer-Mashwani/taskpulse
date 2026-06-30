@@ -14,10 +14,11 @@ async function resolveEmailsToUsers(emails) {
   return { users, notFound };
 }
 
+// CREATE TASK ROUTE
 router.post("/", authenticate, requireAdmin, async (req, res) => {
   try {
     const io = req.app.get("io");
-    const { title, description, priority, assigneeEmails } = req.body;
+    const { title, description, priority, assigneeEmails, deadline } = req.body;
 
     if (!title || !description || !assigneeEmails || assigneeEmails.length === 0) {
       return res.status(400).json({ message: "Title, description, and at least one assignee email are required" });
@@ -31,11 +32,15 @@ router.post("/", authenticate, requireAdmin, async (req, res) => {
     const assigneeIds = users.map((u) => u._id);
     const memberSet = [...new Set([req.user.id, ...assigneeIds.map((id) => id.toString())])];
 
+    const creatingUser = await User.findById(req.user.id);
+
     const task = await Task.create({
       title,
       description,
       priority: priority || "moderate",
+      deadline: deadline || null, // Integrated deadline logic
       createdBy: req.user.id,
+      company: creatingUser.company,
       currentAssignees: assigneeIds,
       members: memberSet,
       delegationChain: assigneeIds.map((id) => ({
@@ -57,9 +62,11 @@ router.post("/", authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// GET ALL TASKS FOR USER COMPANY
 router.get("/", authenticate, async (req, res) => {
   try {
-    const tasks = await Task.find({ members: req.user.id })
+    const user = await User.findById(req.user.id);
+    const tasks = await Task.find({ members: req.user.id, company: user.company })
       .populate("createdBy", "name email avatar")
       .populate("currentAssignees", "name email avatar")
       .sort({ createdAt: -1 });
@@ -70,6 +77,7 @@ router.get("/", authenticate, async (req, res) => {
   }
 });
 
+// GET SINGLE TASK BY ID
 router.get("/:id", authenticate, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id)
@@ -91,6 +99,7 @@ router.get("/:id", authenticate, async (req, res) => {
   }
 });
 
+// ADD ASSIGNEE TO TASK
 router.post("/:id/add-assignee", authenticate, async (req, res) => {
   try {
     const io = req.app.get("io");
@@ -124,6 +133,7 @@ router.post("/:id/add-assignee", authenticate, async (req, res) => {
   }
 });
 
+// DELEGATE TASK TO ANOTHER USER
 router.post("/:id/delegate", authenticate, async (req, res) => {
   try {
     const io = req.app.get("io");
@@ -160,6 +170,7 @@ router.post("/:id/delegate", authenticate, async (req, res) => {
   }
 });
 
+// PATCH TASK STATUS
 router.patch("/:id/status", authenticate, async (req, res) => {
   try {
     const io = req.app.get("io");

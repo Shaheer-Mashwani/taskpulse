@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import socket from "../socket";
 import { useAuth } from "../context/AuthContext";
+import AudioRecorder from "../components/AudioRecorder";
 
 const statusColor = {
   pending: { bg: "var(--surface-sunken)", text: "var(--ink-soft)" },
@@ -124,9 +125,9 @@ export default function TaskChat() {
   const sColor = statusColor[task.status];
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "var(--bg)" }}>
+    <div className="task-chat-layout" style={{ display: "flex", height: "100vh", background: "var(--bg)" }}>
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="chat-header" style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <button className="secondary" onClick={() => navigate("/dashboard")} style={{ marginRight: "12px", padding: "6px 12px", fontSize: "13px" }}>
               ← Back
@@ -135,6 +136,14 @@ export default function TaskChat() {
             <p className="meta-text" style={{ margin: "4px 0 0" }}>
               Assigned to {task.currentAssignees.map((a) => a.name).join(", ")}
             </p>
+            
+            {/* Deadline conditionally shown here below the assignees list */}
+            {task.deadline && (
+              <p className="meta-text" style={{ margin: "2px 0 0", color: new Date(task.deadline) < new Date() && task.status !== "done" ? "var(--urgent)" : "var(--ink-soft)" }}>
+                Deadline: {new Date(task.deadline).toLocaleDateString()}
+                {new Date(task.deadline) < new Date() && task.status !== "done" && " — Overdue"}
+              </p>
+            )}
           </div>
           <select
             value={task.status}
@@ -191,6 +200,7 @@ export default function TaskChat() {
           <div ref={bottomRef} />
         </div>
 
+        {/* Input Bar Section */}
         <div style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", padding: "12px 20px", display: "flex", gap: "8px", alignItems: "center" }}>
           <input
             type="file"
@@ -202,6 +212,10 @@ export default function TaskChat() {
           <button className="secondary" onClick={() => fileInputRef.current.click()} disabled={uploading} style={{ padding: "10px 12px" }}>
             📎
           </button>
+          
+          {/* Audio Recorder placed right next to attachment button */}
+          <AudioRecorder taskId={id} userId={user._id} />
+
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -214,7 +228,7 @@ export default function TaskChat() {
         </div>
       </div>
 
-      <div style={{ width: "240px", background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: "18px" }}>
+      <div className="members-panel" style={{ width: "240px", background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: "18px" }}>
         <p style={{ fontWeight: "500", marginBottom: "12px", fontSize: "13px", color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
           Members
         </p>

@@ -19,6 +19,14 @@ export default function Dashboard() {
   const [priority, setPriority] = useState("moderate");
   const [emails, setEmails] = useState("");
   const [error, setError] = useState("");
+  const [deadline, setDeadline] = useState("");
+  
+  // New filter state and filtering logic
+  const [filter, setFilter] = useState("all");
+  const filteredTasks = tasks.filter((task) => {
+    if (filter === "all") return true;
+    return task.status === filter;
+  });
 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -37,11 +45,15 @@ export default function Dashboard() {
     setError("");
     try {
       const assigneeEmails = emails.split(",").map((e) => e.trim()).filter(Boolean);
-      await axiosInstance.post("/api/tasks", { title, description, priority, assigneeEmails });
+      
+      // Fixed duplicate API post call bug here
+      await axiosInstance.post("/api/tasks", { title, description, priority, assigneeEmails, deadline: deadline || null });
+      
       setShowForm(false);
       setTitle("");
       setDescription("");
       setEmails("");
+      setDeadline("");
       loadTasks();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to create task");
@@ -50,7 +62,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: "720px", margin: "0 auto", padding: "32px 20px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
+      <div className="dashboard-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
         <div>
           <h2 style={{ fontSize: "22px" }}>TaskPulse</h2>
           <p className="meta-text" style={{ marginTop: "2px" }}>{user?.name} · {user?.role}</p>
@@ -61,6 +73,9 @@ export default function Dashboard() {
           )}
           <button className="secondary" onClick={logout}>Logout</button>
         </div>
+        <button className="secondary" onClick={() => navigate("/settings")} style={{ padding: "8px 12px" }}>
+        ⚙️ Settings
+        </button>
       </div>
 
       {showForm && (
@@ -74,6 +89,13 @@ export default function Dashboard() {
             <option value="easy">Easy</option>
           </select>
           <input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            style={{ width: "100%", marginBottom: "10px" }}
+            min={new Date().toISOString().split("T")[0]}
+          />
+          <input
             placeholder="Assignee emails, comma separated"
             value={emails}
             onChange={(e) => setEmails(e.target.value)}
@@ -84,11 +106,26 @@ export default function Dashboard() {
         </form>
       )}
 
-      {tasks.length === 0 && (
-        <p style={{ color: "var(--ink-soft)", fontSize: "14px" }}>No tasks yet.</p>
+      {/* Filter Tabs UI */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+        {["all", "pending", "working", "done"].map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={filter === f ? "" : "secondary"}
+            style={{ padding: "6px 14px", fontSize: "13px", textTransform: "capitalize" }}
+          >
+            {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {filteredTasks.length === 0 && (
+        <p style={{ color: "var(--ink-soft)", fontSize: "14px" }}>No tasks found.</p>
       )}
 
-      {tasks.map((task) => {
+      {/* Rendering list */}
+      {filteredTasks.map((task) => {
         const colors = priorityStyle[task.priority];
         return (
           <div
@@ -111,6 +148,22 @@ export default function Dashboard() {
                 {task.priority}
               </span>
               <span className="meta-text" style={{ marginLeft: "8px" }}>{statusLabel[task.status]}</span>
+              
+              {/* Deadline rendering directly below status badge */}
+              {task.deadline && (
+                <span
+                  className="meta-text"
+                  style={{
+                    marginLeft: "8px",
+                    color: new Date(task.deadline) < new Date() && task.status !== "done"
+                      ? "var(--urgent)"
+                      : "var(--ink-soft)",
+                  }}
+                >
+                  📅 {new Date(task.deadline).toLocaleDateString()}
+                  {new Date(task.deadline) < new Date() && task.status !== "done" && " (overdue)"}
+                </span>
+              )}
             </div>
             {task.status === "working" && <span className="pulse-dot" />}
           </div>

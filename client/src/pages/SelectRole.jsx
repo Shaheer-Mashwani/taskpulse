@@ -7,14 +7,14 @@ export default function SelectRole() {
   const { login } = useAuth();
 
   const handleSelect = async (role) => {
-    try {
-      const res = await axiosInstance.post("/api/auth/select-role", { role });
-      login(res.data.token, res.data.user);
-      navigate("/dashboard");
-    } catch (err) {
-      console.error("Role selection failed:", err);
-    }
-  };
+  try {
+    const res = await axiosInstance.post("/api/auth/select-role", { role });
+    login(res.data.token, res.data.user);
+    navigate("/company-setup"); // Always go to company setup after picking role
+  } catch (err) {
+    console.error("Role selection failed:", err);
+  }
+};
 
   return (
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "var(--bg)" }}>

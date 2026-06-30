@@ -35,6 +35,9 @@ app.use("/api/messages", messageRoutes);
 const uploadRoutes = require("./routes/upload");
 app.use("/api/upload", uploadRoutes);
 
+const companyRoutes = require("./routes/company");
+app.use("/api/company", companyRoutes);
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))

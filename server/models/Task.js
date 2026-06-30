@@ -17,6 +17,7 @@ const delegationSchema = new mongoose.Schema(
 
 const taskSchema = new mongoose.Schema(
   {
+    company: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },
     title: { type: String, required: true },
     description: { type: String, required: true },
 
@@ -39,6 +40,7 @@ const taskSchema = new mongoose.Schema(
       { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     ],
 
+    deadline: { type: Date, default: null },
     // Every member who has EVER been part of this task — admin, current, and past assignees
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 
