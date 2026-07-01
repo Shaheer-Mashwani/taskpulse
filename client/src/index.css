@@ -1,32 +1,45 @@
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
 :root {
-  --bg: #f6f7f9;
+  --bg: #F0F4FF;
   --surface: #ffffff;
-  --surface-sunken: #eef1f4;
-  --border: #e2e5ea;
-  --ink: #161a23;
-  --ink-soft: #6b7280;
-  --brand: #145c56;
-  --brand-dark: #0f4742;
-  --brand-soft: #e3f2ef;
+  --surface-sunken: #E8EDF8;
+  --border: #D8E0F0;
+  --ink: #1A1D2E;
+  --ink-soft: #6B7280;
+  --brand: #4F46E5;
+  --brand-dark: #3730A3;
+  --brand-soft: #EEF2FF;
+  --brand-mid: #818CF8;
 
-  --urgent: #d85a30;
-  --urgent-bg: #faece7;
-  --moderate: #ba7517;
-  --moderate-bg: #faeeda;
-  --easy: #1d9e75;
-  --easy-bg: #e1f5ee;
-  --danger: #c23b3b;
+  --urgent: #DC2626;
+  --urgent-bg: #FEF2F2;
+  --moderate: #D97706;
+  --moderate-bg: #FFFBEB;
+  --easy: #059669;
+  --easy-bg: #ECFDF5;
+  --danger: #DC2626;
+
+  --status-pending-bg: #FFFBEB;
+  --status-pending-text: #92400E;
+  --status-pending-dot: #F59E0B;
+  --status-working-bg: #EEF2FF;
+  --status-working-text: #3730A3;
+  --status-working-dot: #4F46E5;
+  --status-done-bg: #ECFDF5;
+  --status-done-text: #065F46;
+  --status-done-dot: #059669;
 
   --font-display: "Fraunces", serif;
   --font-body: "Inter", -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
+
+  --shadow-sm: 0 1px 3px rgba(79,70,229,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(79,70,229,0.12), 0 2px 6px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 32px rgba(79,70,229,0.15), 0 4px 12px rgba(0,0,0,0.08);
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -34,6 +47,9 @@ body {
   color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  background-image: radial-gradient(ellipse at 20% 10%, rgba(79,70,229,0.06) 0%, transparent 60%),
+                    radial-gradient(ellipse at 80% 80%, rgba(99,102,241,0.05) 0%, transparent 60%);
+  min-height: 100vh;
 }
 
 h1, h2, h3 {
@@ -47,65 +63,91 @@ button {
   font-weight: 500;
   font-size: 14px;
   border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
+  border-radius: 10px;
+  padding: 10px 18px;
   cursor: pointer;
   background: var(--brand);
   color: white;
-  transition: background 0.15s ease, transform 0.05s ease;
+  transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 8px rgba(79,70,229,0.25);
 }
 
 button:hover {
   background: var(--brand-dark);
+  box-shadow: 0 4px 14px rgba(79,70,229,0.35);
+  transform: translateY(-1px);
 }
 
-button:active {
-  transform: scale(0.98);
-}
+button:active { transform: scale(0.97) translateY(0); }
 
 button:disabled {
   background: var(--border);
   color: var(--ink-soft);
   cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 button.secondary {
-  background: var(--surface-sunken);
+  background: var(--surface);
   color: var(--ink);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 button.secondary:hover {
-  background: var(--border);
+  background: var(--surface-sunken);
+  border-color: var(--brand-mid);
+  box-shadow: 0 2px 8px rgba(79,70,229,0.12);
+}
+
+button.danger {
+  background: var(--danger);
+  box-shadow: 0 2px 8px rgba(220,38,38,0.25);
+}
+
+button.danger:hover {
+  background: #b91c1c;
+  box-shadow: 0 4px 14px rgba(220,38,38,0.35);
 }
 
 input, textarea, select {
   font-family: var(--font-body);
   font-size: 14px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
   background: var(--surface);
   color: var(--ink);
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 input:focus, textarea:focus, select:focus {
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px var(--brand-soft);
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
 }
 
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.card-elevated {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
 }
 
 .badge {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.02em;
-  padding: 3px 9px;
+  letter-spacing: 0.03em;
+  padding: 3px 10px;
   border-radius: 20px;
   display: inline-block;
 }
@@ -117,14 +159,20 @@ input:focus, textarea:focus, select:focus {
   letter-spacing: 0.01em;
 }
 
-/* --- Signature element: the "pulse" --- */
+.gradient-text {
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-mid) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .pulse-dot {
   position: relative;
   display: inline-block;
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--easy);
+  background: var(--brand);
   flex-shrink: 0;
 }
 
@@ -133,57 +181,28 @@ input:focus, textarea:focus, select:focus {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: var(--easy);
+  background: var(--brand);
   animation: pulse-ring 1.8s ease-out infinite;
 }
 
 @keyframes pulse-ring {
   0% { transform: scale(1); opacity: 0.6; }
-  100% { transform: scale(2.6); opacity: 0; }
+  100% { transform: scale(2.8); opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .pulse-dot::after { animation: none; }
 }
 
-/* ---- Responsive ---- */
 @media (max-width: 768px) {
-  .dashboard-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .task-chat-layout {
-    flex-direction: column;
-  }
-
-  .members-panel {
-    width: 100% !important;
-    border-left: none !important;
-    border-top: 1px solid var(--border);
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  .chat-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
+  .dashboard-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .task-chat-layout { flex-direction: column; }
+  .members-panel { width: 100% !important; border-left: none !important; border-top: 1px solid var(--border); max-height: 220px; overflow-y: auto; }
+  .chat-header { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
 
 @media (max-width: 480px) {
-  .card {
-    border-radius: 8px;
-  }
-
-  button {
-    font-size: 13px;
-    padding: 9px 14px;
-  }
-
-  input, textarea, select {
-    font-size: 13px;
-  }
+  .card, .card-elevated { border-radius: 12px; }
+  button { font-size: 13px; padding: 9px 14px; }
+  input, textarea, select { font-size: 13px; }
 }
