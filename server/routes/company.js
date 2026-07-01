@@ -83,4 +83,67 @@ router.get("/me", authenticate, async (req, res) => {
   }
 });
 
+// GET all members of the current user's company
+router.get("/members", authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user.company) return res.status(404).json({ message: "No company found" });
+
+    const company = await Company.findById(user.company).populate(
+      "members",
+      "name email avatar role"
+    );
+
+    res.json({ members: company.members });
+  } catch (err) {
+    console.error("Get members error:", err);
+    res.status(500).json({ message: "Failed to fetch members" });
+  }
+});
+
+// ADD a member to the company by email (any member can do this)
+router.post("/members/add", authenticate, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const currentUser = await User.findById(req.user.id);
+    if (!currentUser.company) {
+      return res.status(400).json({ message: "You are not part of a company" });
+    }
+
+    const targetUser = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!targetUser) {
+      return res.status(404).json({
+        message: "No TaskPulse account found with that email. Ask them to sign up first.",
+      });
+    }
+
+    if (targetUser.company && targetUser.company.toString() === currentUser.company.toString()) {
+      return res.status(400).json({ message: "This person is already in your workspace" });
+    }
+
+    const company = await Company.findById(currentUser.company);
+
+    if (!company.members.includes(targetUser._id)) {
+      company.members.push(targetUser._id);
+      await company.save();
+    }
+
+    await User.findByIdAndUpdate(targetUser._id, {
+      company: currentUser.company,
+    });
+
+    const updatedCompany = await Company.findById(currentUser.company).populate(
+      "members",
+      "name email avatar role"
+    );
+
+    res.json({ message: "Member added successfully", members: updatedCompany.members });
+  } catch (err) {
+    console.error("Add member error:", err);
+    res.status(500).json({ message: "Failed to add member" });
+  }
+});
+
 module.exports = router;

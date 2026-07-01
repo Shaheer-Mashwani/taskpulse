@@ -15,7 +15,7 @@ async function resolveEmailsToUsers(emails) {
 }
 
 // CREATE TASK ROUTE
-router.post("/", authenticate, requireAdmin, async (req, res) => {
+router.post("/", authenticate, async (req, res) => {
   try {
     const io = req.app.get("io");
     const { title, description, priority, assigneeEmails, deadline } = req.body;
