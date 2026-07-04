@@ -51,61 +51,88 @@ export default function Dashboard() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
       <div style={{
-        background: "var(--surface)",
-        borderBottom: "1px solid var(--border)",
-        boxShadow: "0 2px 12px rgba(79,70,229,0.07)",
-        position: "sticky", top: 0, zIndex: 50,
+  background: "var(--surface)",
+  borderBottom: "1px solid var(--border)",
+  boxShadow: "0 2px 12px rgba(79,70,229,0.07)",
+  position: "sticky", top: 0, zIndex: 50,
+}}>
+  <div style={{
+    maxWidth: "760px", margin: "0 auto",
+    padding: "12px 16px",
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    gap: "8px",
+  }}>
+    {/* Logo + name */}
+    <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flex: 1 }}>
+      <div style={{
+        width: "32px", height: "32px", borderRadius: "9px", flexShrink: 0,
+        background: "linear-gradient(135deg, var(--brand) 0%, var(--brand-mid) 100%)",
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <div style={{ maxWidth: "760px", margin: "0 auto", padding: "13px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{
-              width: "34px", height: "34px", borderRadius: "10px",
-              background: "linear-gradient(135deg, var(--brand) 0%, var(--brand-mid) 100%)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "white" }} />
-            </div>
-            <div>
-              <span
-                className="gradient-text"
-                style={{ fontFamily: "var(--font-display)", fontSize: "18px", fontWeight: 600 }}
-              >
-                TaskPulse
-              </span>
-              <span className="meta-text" style={{ marginLeft: "8px" }}>{user?.name}</span>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <button
-              className="secondary"
-              onClick={() => setShowMembers(true)}
-              style={{ padding: "8px 12px", borderRadius: "12px", fontSize: "18px", lineHeight: 1 }}
-              title="Team members"
-            >
-              👥
-            </button>
-            <button
-              className="secondary"
-              onClick={() => navigate("/settings")}
-              style={{ padding: "8px 12px", borderRadius: "12px", fontSize: "18px", lineHeight: 1 }}
-              title="Settings"
-            >
-              ⚙️
-            </button>
-            <button
-              className="secondary"
-              onClick={logout}
-              style={{ padding: "8px 12px", borderRadius: "12px", fontSize: "13px" }}
-            >
-              Logout
-            </button>
-          </div>
-        </div>
+        <div style={{ width: "9px", height: "9px", borderRadius: "50%", background: "white" }} />
       </div>
+      <div style={{ minWidth: 0 }}>
+        <span className="gradient-text" style={{ fontFamily: "var(--font-display)", fontSize: "17px", fontWeight: 600 }}>
+          TaskPulse
+        </span>
+        <span className="meta-text" style={{
+          marginLeft: "6px", fontSize: "11px",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          maxWidth: "80px", display: "inline-block", verticalAlign: "middle",
+        }}>
+          {user?.name?.split(" ")[0]}
+        </span>
+      </div>
+    </div>
+
+    {/* Action buttons — icons only on mobile */}
+    <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0 }}>
+      {/* Members */}
+      <button
+        className="secondary"
+        onClick={() => setShowMembers(true)}
+        title="Team members"
+        style={{ padding: "8px", borderRadius: "10px", lineHeight: 1 }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/>
+        </svg>
+      </button>
+
+      {/* Settings */}
+      <button
+        className="secondary"
+        onClick={() => navigate("/settings")}
+        title="Settings"
+        style={{ padding: "8px", borderRadius: "10px", lineHeight: 1 }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+
+      {/* Logout — icon on mobile, text on desktop */}
+      <button
+        className="secondary"
+        onClick={logout}
+        title="Logout"
+        style={{ padding: "8px", borderRadius: "10px", lineHeight: 1, display: "flex", alignItems: "center", gap: "5px" }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span className="hide-mobile">Logout</span>
+      </button>
+    </div>
+  </div>
+</div>
 
       <div style={{ maxWidth: "760px", margin: "0 auto", padding: "24px 20px 100px" }}>
-        <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
+        <div className="filter-tabs" style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
           {["all", "pending", "working", "done"].map((f) => (
             <button
               key={f}

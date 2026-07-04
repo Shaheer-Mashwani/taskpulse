@@ -206,3 +206,21 @@ input:focus, textarea:focus, select:focus {
   button { font-size: 13px; padding: 9px 14px; }
   input, textarea, select { font-size: 13px; }
 }
+
+/* Hide text on small screens, show only icons */
+@media (max-width: 480px) {
+  .hide-mobile { display: none; }
+
+  /* Filter tabs wrap cleanly */
+  .filter-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .filter-tabs button {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+    justify-content: center;
+  }
+}
