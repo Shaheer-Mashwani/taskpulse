@@ -8,15 +8,32 @@ import "./index.css";
 
 function Root() {
   const { loading } = useAuth();
+
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
-        <span style={{ fontFamily: "var(--font-mono)", color: "var(--ink-soft)", fontSize: "13px" }}>
-          Loading...
-        </span>
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+        background: "var(--bg)",
+        gap: "16px",
+      }}>
+        <div style={{
+          width: "40px", height: "40px", borderRadius: "50%",
+          border: "3px solid var(--brand)",
+          borderTopColor: "transparent",
+          animation: "spin 0.8s linear infinite",
+        }} />
+        <p style={{ fontFamily: "var(--font-mono)", fontSize: "13px", color: "var(--ink-soft)" }}>
+          Restoring session...
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
+
   return <App />;
 }
 

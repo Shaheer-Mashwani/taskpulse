@@ -1,80 +1,114 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import axiosInstance from "../api/axiosInstance";
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
+
+function parseJwt(token) {
+  try {
+    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function isTokenExpired(token) {
+  const payload = parseJwt(token);
+  if (!payload?.exp) return true;
+  // exp is in seconds; give a 60-second buffer before actual expiry
+  return payload.exp * 1000 < Date.now() + 60_000;
+}
 
 export function AuthProvider({ children }) {
-  // Optimization: Pre-populate user state if it already exists in localStorage
-  // This reduces layout shifts while waiting for the API response.
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem("user");
-    try {
-      return savedUser ? JSON.parse(savedUser) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    // Fix/Best Practice: Ensure axios instance has the bearer token for this initial check
-    // (Ideally handled by an axios request interceptor, but safe to explicitly attach here too)
-    axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-    // Verify token is still valid by hitting /api/auth/me
-    axiosInstance
-      .get("/api/auth/me")
-      .then((res) => {
-        setUser(res.data.user);
-        localStorage.setItem("user", JSON.stringify(res.data.user)); // Sync any profile updates
-      })
-      .catch((err) => {
-        console.error("Session verification failed:", err);
-        // Token expired or invalid — clear everything
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        setUser(null);
-        delete axiosInstance.defaults.headers.common["Authorization"];
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
-
-  const login = (token, userData) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(userData));
-    
-    // Explicitly set the token headers for subsequent requests immediately after login
-    axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    
-    setUser(userData);
-  };
-
-  const logout = () => {
+  const clearSession = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    
-    // Remove header configuration upon logout
-    delete axiosInstance.defaults.headers.common["Authorization"];
-    
     setUser(null);
-  };
+  }, []);
+
+  const login = useCallback((token, userData) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+    setError(null);
+  }, []);
+
+  const logout = useCallback(() => {
+    clearSession();
+  }, [clearSession]);
+
+  // Called on every app load — verify the stored token is still valid
+  useEffect(() => {
+    const restoreSession = async () => {
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+
+      // Nothing stored — definitely not logged in
+      if (!token || !storedUser) {
+        setLoading(false);
+        return;
+      }
+
+      // Token already expired client-side — no point hitting the server
+      if (isTokenExpired(token)) {
+        clearSession();
+        setLoading(false);
+        return;
+      }
+
+      // Token looks valid locally — confirm with the server
+      try {
+        const res = await axiosInstance.get("/api/auth/me");
+        const freshUser = res.data.user;
+        // Keep localStorage in sync with whatever the server returns
+        localStorage.setItem("user", JSON.stringify(freshUser));
+        setUser(freshUser);
+      } catch (err) {
+        // Server rejected the token (expired, tampered, user deleted, etc.)
+        clearSession();
+        setError("Your session expired. Please sign in again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreSession();
+  }, [clearSession]);
+
+  // Intercept 401 responses anywhere in the app
+  // (e.g. token expired mid-session while user was active)
+  useEffect(() => {
+    const interceptor = axiosInstance.interceptors.response.use(
+      (response) => response,
+      (err) => {
+        if (err.response?.status === 401) {
+          clearSession();
+        }
+        return Promise.reject(err);
+      }
+    );
+    return () => axiosInstance.interceptors.response.eject(interceptor);
+  }, [clearSession]);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {!loading && children} 
-      {/* Or pass loading state down so protected routes can handle a loading spinner */}
+    <AuthContext.Provider value={{ user, login, logout, loading, error }}>
+      {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 }
