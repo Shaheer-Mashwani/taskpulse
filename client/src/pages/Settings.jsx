@@ -2,7 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../utils/useTheme";
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("theme", theme);
+}
 
 export default function Settings() {
   const { user, logout } = useAuth();
@@ -11,12 +15,20 @@ export default function Settings() {
   const [tasks, setTasks] = useState([]);
   const [clearing, setClearing] = useState(null);
   const [copied, setCopied] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+  const [theme, setTheme] = useState(
+    localStorage.getItem("theme") || "light"
+  );
 
   useEffect(() => {
     axiosInstance.get("/api/company/me").then((res) => setCompany(res.data.company));
     axiosInstance.get("/api/tasks").then((res) => setTasks(res.data.tasks));
   }, []);
+
+  const handleToggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    applyTheme(next);
+    setTheme(next);
+  };
 
   const handleClearChat = async (taskId) => {
     if (!window.confirm("Clear all messages in this task chat? This cannot be undone.")) return;
@@ -40,28 +52,94 @@ export default function Settings() {
   return (
     <div style={{ maxWidth: "680px", margin: "0 auto", padding: "32px 20px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "28px" }}>
-        <button className="secondary" onClick={() => navigate("/dashboard")} style={{ padding: "6px 12px", fontSize: "13px" }}>
+        <button
+          className="secondary"
+          onClick={() => navigate("/dashboard")}
+          style={{ padding: "8px 12px", fontSize: "13px", borderRadius: "10px" }}
+        >
           ← Back
         </button>
         <h2 style={{ fontSize: "20px" }}>Settings</h2>
       </div>
 
+      {/* Appearance */}
+      <div className="card" style={{ padding: "20px", marginBottom: "20px" }}>
+        <p style={{ fontWeight: 600, marginBottom: "16px", fontSize: "15px" }}>Appearance</p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{
+              width: "42px", height: "42px", borderRadius: "12px",
+              background: theme === "dark" ? "var(--brand-soft)" : "#FFF8E1",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "22px",
+            }}>
+              {theme === "dark" ? "🌙" : "☀️"}
+            </div>
+            <div>
+              <p style={{ fontWeight: 600, fontSize: "14px", margin: 0 }}>
+                {theme === "dark" ? "Dark mode" : "Light mode"}
+              </p>
+              <p className="meta-text" style={{ margin: "3px 0 0" }}>
+                {theme === "dark" ? "Easy on the eyes" : "Bright and clean"}
+              </p>
+            </div>
+          </div>
+
+          <div
+            onClick={handleToggleTheme}
+            style={{
+              width: "54px", height: "30px", borderRadius: "15px",
+              background: theme === "dark" ? "var(--brand)" : "var(--border)",
+              cursor: "pointer", position: "relative",
+              transition: "background 0.25s ease",
+              flexShrink: 0,
+              boxShadow: theme === "dark" ? "0 2px 8px rgba(79,70,229,0.4)" : "none",
+            }}
+          >
+            <div style={{
+              position: "absolute", top: "4px",
+              left: theme === "dark" ? "28px" : "4px",
+              width: "22px", height: "22px", borderRadius: "50%",
+              background: "white",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+              transition: "left 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "12px",
+            }}>
+              {theme === "dark" ? "🌙" : "☀️"}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Company Info */}
       {company && (
         <div className="card" style={{ padding: "20px", marginBottom: "20px" }}>
-          <p style={{ fontWeight: 600, marginBottom: "12px" }}>Workspace</p>
-          <p style={{ fontSize: "15px", marginBottom: "8px" }}>{company.name}</p>
-          <p className="meta-text" style={{ marginBottom: "12px" }}>{company.members?.length} member{company.members?.length !== 1 ? "s" : ""}</p>
+          <p style={{ fontWeight: 600, marginBottom: "12px", fontSize: "15px" }}>Workspace</p>
+          <p style={{ fontSize: "15px", fontWeight: 500, marginBottom: "4px" }}>{company.name}</p>
+          <p className="meta-text" style={{ marginBottom: "14px" }}>
+            {company.members?.length} member{company.members?.length !== 1 ? "s" : ""}
+          </p>
 
           {user?.role === "admin" && (
-            <div style={{ background: "var(--surface-sunken)", borderRadius: "8px", padding: "12px" }}>
-              <p style={{ fontSize: "13px", color: "var(--ink-soft)", marginBottom: "6px" }}>Invite code — share this with team members:</p>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <code style={{ fontFamily: "var(--font-mono)", fontSize: "18px", fontWeight: 600, letterSpacing: "0.15em", color: "var(--brand)" }}>
+            <div style={{ background: "var(--surface-sunken)", borderRadius: "12px", padding: "14px" }}>
+              <p style={{ fontSize: "12px", color: "var(--ink-soft)", marginBottom: "8px", fontFamily: "var(--font-mono)" }}>
+                INVITE CODE — share with team members
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <code style={{
+                  fontFamily: "var(--font-mono)", fontSize: "22px",
+                  fontWeight: 700, letterSpacing: "0.18em", color: "var(--brand)",
+                  flex: 1,
+                }}>
                   {company.inviteCode}
                 </code>
-                <button onClick={handleCopyCode} className="secondary" style={{ padding: "6px 12px", fontSize: "12px" }}>
-                  {copied ? "Copied!" : "Copy"}
+                <button
+                  onClick={handleCopyCode}
+                  className="secondary"
+                  style={{ padding: "7px 14px", fontSize: "13px", borderRadius: "10px" }}
+                >
+                  {copied ? "✓ Copied" : "Copy"}
                 </button>
               </div>
             </div>
@@ -72,17 +150,24 @@ export default function Settings() {
       {/* Admin: Clear chat logs */}
       {user?.role === "admin" && tasks.length > 0 && (
         <div className="card" style={{ padding: "20px", marginBottom: "20px" }}>
-          <p style={{ fontWeight: 600, marginBottom: "12px" }}>Clear Chat Logs</p>
-          <p style={{ fontSize: "13px", color: "var(--ink-soft)", marginBottom: "14px" }}>
+          <p style={{ fontWeight: 600, marginBottom: "6px", fontSize: "15px" }}>Clear Chat Logs</p>
+          <p style={{ fontSize: "13px", color: "var(--ink-soft)", marginBottom: "16px" }}>
             Permanently delete all messages from a task chat.
           </p>
           {tasks.map((task) => (
-            <div key={task._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderTop: "1px solid var(--border)" }}>
-              <span style={{ fontSize: "14px" }}>{task.title}</span>
+            <div key={task._id} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "12px 0", borderTop: "1px solid var(--border)",
+            }}>
+              <span style={{ fontSize: "14px", fontWeight: 500 }}>{task.title}</span>
               <button
                 onClick={() => handleClearChat(task._id)}
                 disabled={clearing === task._id}
-                style={{ background: "var(--danger)", padding: "6px 12px", fontSize: "12px" }}
+                style={{
+                  background: "var(--danger)", padding: "7px 14px",
+                  fontSize: "12px", borderRadius: "10px",
+                  boxShadow: "0 2px 8px rgba(220,38,38,0.25)",
+                }}
               >
                 {clearing === task._id ? "Clearing..." : "Clear chat"}
               </button>
@@ -91,69 +176,42 @@ export default function Settings() {
         </div>
       )}
 
-      {/* Theme toggle */}
-<div className="card" style={{ padding: "20px", marginBottom: "20px" }}>
-  <p style={{ fontWeight: 600, marginBottom: "16px", fontSize: "15px" }}>Appearance</p>
-  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-      <div style={{
-        width: "40px", height: "40px", borderRadius: "10px",
-        background: theme === "dark" ? "var(--brand-soft)" : "#FFF8E1",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: "20px",
-      }}>
-        {theme === "dark" ? "🌙" : "☀️"}
-      </div>
-      <div>
-        <p style={{ fontWeight: 500, fontSize: "14px", margin: 0 }}>
-          {theme === "dark" ? "Dark mode" : "Light mode"}
-        </p>
-        <p className="meta-text" style={{ margin: "2px 0 0" }}>
-          {theme === "dark" ? "Easy on the eyes" : "Bright and clean"}
-        </p>
-      </div>
-    </div>
-
-    {/* Toggle switch */}
-    <div
-      onClick={toggleTheme}
-      style={{
-        width: "52px",
-        height: "28px",
-        borderRadius: "14px",
-        background: theme === "dark" ? "var(--brand)" : "var(--border)",
-        cursor: "pointer",
-        position: "relative",
-        transition: "background 0.25s ease",
-        flexShrink: 0,
-      }}
-    >
-      <div style={{
-        position: "absolute",
-        top: "3px",
-        left: theme === "dark" ? "27px" : "3px",
-        width: "22px",
-        height: "22px",
-        borderRadius: "50%",
-        background: "white",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-        transition: "left 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
-      }} />
-    </div>
-  </div>
-</div>
-
       {/* Account */}
       <div className="card" style={{ padding: "20px" }}>
-        <p style={{ fontWeight: 600, marginBottom: "12px" }}>Account</p>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-          {user?.avatar && <img src={user.avatar} alt="" style={{ width: "40px", height: "40px", borderRadius: "50%" }} />}
+        <p style={{ fontWeight: 600, marginBottom: "14px", fontSize: "15px" }}>Account</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "18px" }}>
+          {user?.avatar ? (
+            <img
+              src={user.avatar}
+              alt=""
+              style={{ width: "46px", height: "46px", borderRadius: "12px", objectFit: "cover" }}
+            />
+          ) : (
+            <div style={{
+              width: "46px", height: "46px", borderRadius: "12px",
+              background: "linear-gradient(135deg, var(--brand) 0%, var(--brand-mid) 100%)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontWeight: 700, fontSize: "18px", color: "white",
+            }}>
+              {user?.name?.[0]?.toUpperCase()}
+            </div>
+          )}
           <div>
-            <p style={{ fontSize: "14px", fontWeight: 500, margin: 0 }}>{user?.name}</p>
-            <p className="meta-text">{user?.email} · {user?.role}</p>
+            <p style={{ fontSize: "15px", fontWeight: 600, margin: 0 }}>{user?.name}</p>
+            <p className="meta-text" style={{ margin: "3px 0 0" }}>
+              {user?.email} · {user?.role}
+            </p>
           </div>
         </div>
-        <button onClick={logout} style={{ background: "var(--danger)" }}>
+        <button
+          onClick={logout}
+          style={{
+            background: "var(--danger)",
+            boxShadow: "0 2px 8px rgba(220,38,38,0.25)",
+            borderRadius: "12px",
+            padding: "10px 20px",
+          }}
+        >
           Log out
         </button>
       </div>

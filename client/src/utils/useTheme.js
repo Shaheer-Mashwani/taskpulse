@@ -1,18 +1,25 @@
-import { useState, useEffect } from "react";
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("theme", theme);
+}
+
+// Initialize on module load
+const savedTheme = localStorage.getItem("theme") || "light";
+applyTheme(savedTheme);
 
 export function useTheme() {
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem("theme") || "light";
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+  const getTheme = () => localStorage.getItem("theme") || "light";
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+    const current = getTheme();
+    const next = current === "light" ? "dark" : "light";
+    applyTheme(next);
+    // Force re-render across all components listening
+    window.dispatchEvent(new CustomEvent("themechange", { detail: next }));
   };
 
-  return { theme, toggleTheme };
+  return {
+    theme: getTheme(),
+    toggleTheme,
+  };
 }
