@@ -2,24 +2,8 @@ const express = require("express");
 const Task = require("../models/Task");
 const User = require("../models/User");
 const authenticate = require("../middleware/auth");
-const requireAdmin = require("../middleware/requireAdmin");
 const logSystemMessage = require("../utils/logSystemMessage");
-// After: for (const user of users) { await logSystemMessage(...) }
-
-// Notify all assignees about the new task
-const sendPush = require("../utils/sendPushNotification");
-const creatorUser = await User.findById(req.user.id);
-
-sendPush(assigneeIds, {
-  title: "New task assigned to you",
-  body: `${creatorUser.name} assigned: ${title}`,
-  icon: "/icon-192.png",
-  badge: "/badge-72.png",
-  tag: `new-task-${task._id}`,
-  data: {
-    url: `/task/${task._id}`,
-  },
-}).catch(console.error);
+const sendPushToUsers = require("../utils/sendPushNotification");
 
 const router = express.Router();
 
@@ -30,7 +14,6 @@ async function resolveEmailsToUsers(emails) {
   return { users, notFound };
 }
 
-// CREATE TASK ROUTE
 router.post("/", authenticate, async (req, res) => {
   try {
     const io = req.app.get("io");
@@ -54,7 +37,7 @@ router.post("/", authenticate, async (req, res) => {
       title,
       description,
       priority: priority || "moderate",
-      deadline: deadline || null, // Integrated deadline logic
+      deadline: deadline || null,
       createdBy: req.user.id,
       company: creatingUser.company,
       currentAssignees: assigneeIds,
@@ -71,6 +54,16 @@ router.post("/", authenticate, async (req, res) => {
       await logSystemMessage(io, task._id, req.user.id, `${user.name} was assigned to this task`);
     }
 
+    // Send push notifications to assignees
+    sendPushToUsers(assigneeIds, {
+      title: "New task assigned to you",
+      body: `${creatingUser.name} assigned: ${title}`,
+      icon: "/icon-192.svg",
+      badge: "/badge-72.svg",
+      tag: `new-task-${task._id}`,
+      data: { url: `/task/${task._id}` },
+    }).catch(console.error);
+
     res.status(201).json({ task });
   } catch (err) {
     console.error("Create task error:", err);
@@ -78,7 +71,6 @@ router.post("/", authenticate, async (req, res) => {
   }
 });
 
-// GET ALL TASKS FOR USER COMPANY
 router.get("/", authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -93,7 +85,6 @@ router.get("/", authenticate, async (req, res) => {
   }
 });
 
-// GET SINGLE TASK BY ID
 router.get("/:id", authenticate, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id)
@@ -115,7 +106,6 @@ router.get("/:id", authenticate, async (req, res) => {
   }
 });
 
-// ADD ASSIGNEE TO TASK
 router.post("/:id/add-assignee", authenticate, async (req, res) => {
   try {
     const io = req.app.get("io");
@@ -149,7 +139,6 @@ router.post("/:id/add-assignee", authenticate, async (req, res) => {
   }
 });
 
-// DELEGATE TASK TO ANOTHER USER
 router.post("/:id/delegate", authenticate, async (req, res) => {
   try {
     const io = req.app.get("io");
@@ -186,7 +175,6 @@ router.post("/:id/delegate", authenticate, async (req, res) => {
   }
 });
 
-// PATCH TASK STATUS
 router.patch("/:id/status", authenticate, async (req, res) => {
   try {
     const io = req.app.get("io");
