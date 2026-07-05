@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../utils/useTheme";
 
 export default function Settings() {
   const { user, logout } = useAuth();
@@ -10,6 +11,7 @@ export default function Settings() {
   const [tasks, setTasks] = useState([]);
   const [clearing, setClearing] = useState(null);
   const [copied, setCopied] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     axiosInstance.get("/api/company/me").then((res) => setCompany(res.data.company));
@@ -88,6 +90,58 @@ export default function Settings() {
           ))}
         </div>
       )}
+
+      {/* Theme toggle */}
+<div className="card" style={{ padding: "20px", marginBottom: "20px" }}>
+  <p style={{ fontWeight: 600, marginBottom: "16px", fontSize: "15px" }}>Appearance</p>
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      <div style={{
+        width: "40px", height: "40px", borderRadius: "10px",
+        background: theme === "dark" ? "var(--brand-soft)" : "#FFF8E1",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: "20px",
+      }}>
+        {theme === "dark" ? "🌙" : "☀️"}
+      </div>
+      <div>
+        <p style={{ fontWeight: 500, fontSize: "14px", margin: 0 }}>
+          {theme === "dark" ? "Dark mode" : "Light mode"}
+        </p>
+        <p className="meta-text" style={{ margin: "2px 0 0" }}>
+          {theme === "dark" ? "Easy on the eyes" : "Bright and clean"}
+        </p>
+      </div>
+    </div>
+
+    {/* Toggle switch */}
+    <div
+      onClick={toggleTheme}
+      style={{
+        width: "52px",
+        height: "28px",
+        borderRadius: "14px",
+        background: theme === "dark" ? "var(--brand)" : "var(--border)",
+        cursor: "pointer",
+        position: "relative",
+        transition: "background 0.25s ease",
+        flexShrink: 0,
+      }}
+    >
+      <div style={{
+        position: "absolute",
+        top: "3px",
+        left: theme === "dark" ? "27px" : "3px",
+        width: "22px",
+        height: "22px",
+        borderRadius: "50%",
+        background: "white",
+        boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+        transition: "left 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
+      }} />
+    </div>
+  </div>
+</div>
 
       {/* Account */}
       <div className="card" style={{ padding: "20px" }}>

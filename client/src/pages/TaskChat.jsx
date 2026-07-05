@@ -497,34 +497,71 @@ export default function TaskChat() {
                   )}
 
                   {msg.type === "audio" && (
-                    <div style={{ background: "var(--surface)", borderRadius: "14px", padding: "10px 12px", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)", maxWidth: "280px" }}>
-                      <audio controls src={msg.content} style={{ width: "100%", height: "36px" }} />
-                    </div>
-                  )}
+  <div style={{
+    background: isMe
+      ? "linear-gradient(135deg, var(--brand) 0%, var(--brand-mid) 100%)"
+      : "var(--surface)",
+    borderRadius: isMe ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
+    padding: "10px 14px",
+    border: isMe ? "none" : "1px solid var(--border)",
+    boxShadow: "var(--shadow-sm)",
+    maxWidth: "min(260px, 75vw)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <span style={{ fontSize: "18px" }}>🎙️</span>
+      <span style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: isMe ? "rgba(255,255,255,0.85)" : "var(--ink-soft)" }}>
+        Voice message
+      </span>
+    </div>
+    <audio
+      controls
+      src={msg.content}
+      style={{
+        width: "100%",
+        height: "32px",
+        borderRadius: "8px",
+        accentColor: isMe ? "white" : "var(--brand)",
+      }}
+    />
+  </div>
+)}
 
                   {msg.type === "video" && (
                     <video controls src={msg.content} style={{ maxWidth: "min(300px, 80vw)", borderRadius: "14px", boxShadow: "var(--shadow-sm)" }} />
                   )}
 
                   {msg.type === "file" && (
-                    <a
-                      href={msg.content}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        background: isMe ? "rgba(255,255,255,0.15)" : "var(--surface)",
-                        border: `1px solid ${isMe ? "rgba(255,255,255,0.3)" : "var(--border)"}`,
-                        borderRadius: "14px", padding: "10px 14px",
-                        display: "inline-flex", alignItems: "center", gap: "8px",
-                        textDecoration: "none",
-                        color: isMe ? "white" : "var(--brand)",
-                        fontSize: "13px", fontWeight: 500,
-                        boxShadow: "var(--shadow-sm)",
-                      }}
-                    >
-                      📄 {msg.fileName}
-                    </a>
-                  )}
+  <a
+    href={msg.content}
+    target="_blank"
+    rel="noreferrer"
+    style={{
+      background: isMe ? "rgba(255,255,255,0.15)" : "var(--surface)",
+      border: `1px solid ${isMe ? "rgba(255,255,255,0.3)" : "var(--border)"}`,
+      borderRadius: isMe ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
+      padding: "10px 14px",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "8px",
+      textDecoration: "none",
+      color: isMe ? "white" : "var(--brand)",
+      fontSize: "13px",
+      fontWeight: 500,
+      boxShadow: "var(--shadow-sm)",
+      maxWidth: "min(260px, 75vw)",
+      wordBreak: "break-word",
+    }}
+  >
+    📄 {msg.fileName
+      ? msg.fileName.length > 25
+        ? msg.fileName.slice(0, 22) + "..."
+        : msg.fileName
+      : "File attachment"}
+  </a>
+)}
                 </div>
               );
             })}
