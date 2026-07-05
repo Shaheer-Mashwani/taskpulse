@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import axiosInstance from "../api/axiosInstance";
+import { subscribeToPush, unsubscribeFromPush } from "../utils/pushNotifications";
 
 const AuthContext = createContext(null);
 
@@ -21,7 +22,6 @@ function parseJwt(token) {
 function isTokenExpired(token) {
   const payload = parseJwt(token);
   if (!payload?.exp) return true;
-  // exp is in seconds; give a 60-second buffer before actual expiry
   return payload.exp * 1000 < Date.now() + 60_000;
 }
 
@@ -41,40 +41,37 @@ export function AuthProvider({ children }) {
     localStorage.setItem("user", JSON.stringify(userData));
     setUser(userData);
     setError(null);
+    setTimeout(() => subscribeToPush(axiosInstance), 1500);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await unsubscribeFromPush(axiosInstance);
     clearSession();
   }, [clearSession]);
 
-  // Called on every app load — verify the stored token is still valid
   useEffect(() => {
     const restoreSession = async () => {
       const token = localStorage.getItem("token");
       const storedUser = localStorage.getItem("user");
 
-      // Nothing stored — definitely not logged in
       if (!token || !storedUser) {
         setLoading(false);
         return;
       }
 
-      // Token already expired client-side — no point hitting the server
       if (isTokenExpired(token)) {
         clearSession();
         setLoading(false);
         return;
       }
 
-      // Token looks valid locally — confirm with the server
       try {
         const res = await axiosInstance.get("/api/auth/me");
         const freshUser = res.data.user;
-        // Keep localStorage in sync with whatever the server returns
         localStorage.setItem("user", JSON.stringify(freshUser));
         setUser(freshUser);
+        setTimeout(() => subscribeToPush(axiosInstance), 1500);
       } catch (err) {
-        // Server rejected the token (expired, tampered, user deleted, etc.)
         clearSession();
         setError("Your session expired. Please sign in again.");
       } finally {
@@ -85,15 +82,11 @@ export function AuthProvider({ children }) {
     restoreSession();
   }, [clearSession]);
 
-  // Intercept 401 responses anywhere in the app
-  // (e.g. token expired mid-session while user was active)
   useEffect(() => {
     const interceptor = axiosInstance.interceptors.response.use(
       (response) => response,
       (err) => {
-        if (err.response?.status === 401) {
-          clearSession();
-        }
+        if (err.response?.status === 401) clearSession();
         return Promise.reject(err);
       }
     );

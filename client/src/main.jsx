@@ -1,31 +1,23 @@
-import { StrictMode } from "react";
+import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { registerServiceWorker } from "./utils/pushNotifications";
 import App from "./App.jsx";
 import "./index.css";
 
 function Root() {
   const { loading } = useAuth();
 
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
   if (loading) {
     return (
-      <div style={{
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-        background: "var(--bg)",
-        gap: "16px",
-      }}>
-        <div style={{
-          width: "40px", height: "40px", borderRadius: "50%",
-          border: "3px solid var(--brand)",
-          borderTopColor: "transparent",
-          animation: "spin 0.8s linear infinite",
-        }} />
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "var(--bg)", gap: "16px" }}>
+        <div style={{ width: "40px", height: "40px", borderRadius: "50%", border: "3px solid var(--brand)", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
         <p style={{ fontFamily: "var(--font-mono)", fontSize: "13px", color: "var(--ink-soft)" }}>
           Restoring session...
         </p>

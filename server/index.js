@@ -39,7 +39,8 @@ const companyRoutes = require("./routes/company");
 app.use("/api/company", companyRoutes);
 
 
-
+const pushRoutes = require("./routes/push");
+app.use("/api/push", pushRoutes);
 
 mongoose
   .connect(process.env.MONGO_URI)

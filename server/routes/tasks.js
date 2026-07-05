@@ -4,6 +4,22 @@ const User = require("../models/User");
 const authenticate = require("../middleware/auth");
 const requireAdmin = require("../middleware/requireAdmin");
 const logSystemMessage = require("../utils/logSystemMessage");
+// After: for (const user of users) { await logSystemMessage(...) }
+
+// Notify all assignees about the new task
+const sendPush = require("../utils/sendPushNotification");
+const creatorUser = await User.findById(req.user.id);
+
+sendPush(assigneeIds, {
+  title: "New task assigned to you",
+  body: `${creatorUser.name} assigned: ${title}`,
+  icon: "/icon-192.png",
+  badge: "/badge-72.png",
+  tag: `new-task-${task._id}`,
+  data: {
+    url: `/task/${task._id}`,
+  },
+}).catch(console.error);
 
 const router = express.Router();
 
