@@ -291,8 +291,18 @@ export default function TaskChat() {
         .send-btn { width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 10px rgba(79,70,229,0.35); }
         .send-btn:hover { transform: scale(1.05); }
         @media (max-width: 640px) {
-          .task-header { padding: 10px 12px !important; }
-          .task-header-title { font-size: 14px !important; }
+          .task-header { 
+            padding: 12px !important; 
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+          }
+          .task-header-right-actions {
+            width: 100% !important;
+            justify-content: flex-start !important;
+            gap: 8px !important;
+          }
+          .task-header-title { font-size: 15px !important; }
           .task-meta { display: none !important; }
           .chat-area { padding: 12px !important; }
           .input-bar { padding: 8px 10px !important; }
@@ -329,9 +339,9 @@ export default function TaskChat() {
         </button>
 
         {/* Task info */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, width: "100%" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            <b className="task-header-title" style={{ fontFamily: "var(--font-display)", fontSize: "15px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "200px" }}>
+            <b className="task-header-title" style={{ fontFamily: "var(--font-display)", fontSize: "15px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "220px" }}>
               {task.title}
             </b>
             <span style={{
@@ -339,12 +349,13 @@ export default function TaskChat() {
               background: sStyle.bg, color: sStyle.text,
               fontSize: "11px", fontFamily: "var(--font-mono)", fontWeight: 600,
               padding: "2px 8px", borderRadius: "20px",
+              flexShrink: 0,
             }}>
               <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: sStyle.dot, display: "inline-block" }} />
               {task.status}
             </span>
             {isOverdue && (
-              <span style={{ background: "var(--urgent-bg)", color: "var(--urgent)", fontSize: "10px", fontFamily: "var(--font-mono)", padding: "2px 7px", borderRadius: "10px" }}>
+              <span style={{ background: "var(--urgent-bg)", color: "var(--urgent)", fontSize: "10px", fontFamily: "var(--font-mono)", padding: "2px 7px", borderRadius: "10px", flexShrink: 0 }}>
                 overdue
               </span>
             )}
@@ -356,7 +367,16 @@ export default function TaskChat() {
         </div>
 
         {/* Right-side actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+        <div 
+          className="task-header-right-actions"
+          style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "6px", 
+            flexShrink: 0,
+            flexWrap: "nowrap"
+          }}
+        >
           {/* Status selector */}
           <select
             value={task.status}
@@ -366,6 +386,7 @@ export default function TaskChat() {
               fontWeight: 600, border: "none", borderRadius: "20px",
               padding: "5px 12px", fontSize: "12px", cursor: "pointer",
               fontFamily: "var(--font-mono)",
+              flexShrink: 0,
             }}
           >
             <option value="pending">⏳ Pending</option>
@@ -395,6 +416,7 @@ export default function TaskChat() {
             className="icon-btn"
             onClick={() => setShowPanel((v) => !v)}
             title="View team"
+            style={{ flexShrink: 0 }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="9" cy="7" r="4" />
