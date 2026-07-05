@@ -6,15 +6,15 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { registerServiceWorker } from "./utils/pushNotifications";
 import App from "./App.jsx";
 import "./index.css";
+import { applyTheme, getSavedTheme } from "./utils/useTheme";
 
 function Root() {
   const { loading } = useAuth();
 
   useEffect(() => {
-    registerServiceWorker();
-    const saved = localStorage.getItem("theme") || "light";
-    document.documentElement.setAttribute("data-theme", saved);
-  }, []);
+  registerServiceWorker();
+  applyTheme(getSavedTheme());
+}, []);
 
   if (loading) {
     return (

@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
+import { applyTheme, getSavedTheme } from "../utils/useTheme";
 
-function applyTheme(theme) {
+/*function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem("theme", theme);
 }
-
+*/
 export default function Settings() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -15,9 +16,7 @@ export default function Settings() {
   const [tasks, setTasks] = useState([]);
   const [clearing, setClearing] = useState(null);
   const [copied, setCopied] = useState(false);
-  const [theme, setTheme] = useState(
-    localStorage.getItem("theme") || "light"
-  );
+  const [theme, setTheme] = useState(getSavedTheme);
 
   useEffect(() => {
     axiosInstance.get("/api/company/me").then((res) => setCompany(res.data.company));
@@ -25,10 +24,10 @@ export default function Settings() {
   }, []);
 
   const handleToggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    applyTheme(next);
-    setTheme(next);
-  };
+  const next = theme === "light" ? "dark" : "light";
+  applyTheme(next);
+  setTheme(next);
+};
 
   const handleClearChat = async (taskId) => {
     if (!window.confirm("Clear all messages in this task chat? This cannot be undone.")) return;
