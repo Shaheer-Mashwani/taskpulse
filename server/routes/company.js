@@ -22,8 +22,15 @@ router.post("/create", authenticate, async (req, res) => {
     const { name } = req.body;
     if (!name) return res.status(400).json({ message: "Company name is required" });
 
-    const inviteCode = nanoid(8).toUpperCase();
+    // Prevent creating a second company if already in one
+    const existingUser = await User.findById(req.user.id);
+    if (existingUser.company) {
+      return res.status(400).json({
+        message: "You are already part of a workspace. Leave it first before creating a new one.",
+      });
+    }
 
+    const inviteCode = nanoid(8).toUpperCase();
     const company = await Company.create({
       name,
       createdBy: req.user.id,
@@ -31,7 +38,10 @@ router.post("/create", authenticate, async (req, res) => {
       inviteCode,
     });
 
-    await User.findByIdAndUpdate(req.user.id, { company: company._id, role: "admin" });
+    await User.findByIdAndUpdate(req.user.id, {
+      company: company._id,
+      role: "admin",
+    });
 
     const updatedUser = await User.findById(req.user.id);
     const token = await issueToken(updatedUser);
@@ -49,6 +59,14 @@ router.post("/join", authenticate, async (req, res) => {
     const { inviteCode } = req.body;
     if (!inviteCode) return res.status(400).json({ message: "Invite code is required" });
 
+    // Prevent joining a second company
+    const existingUser = await User.findById(req.user.id);
+    if (existingUser.company) {
+      return res.status(400).json({
+        message: "You are already part of a workspace. Leave it first before joining another.",
+      });
+    }
+
     const company = await Company.findOne({ inviteCode: inviteCode.toUpperCase() });
     if (!company) return res.status(404).json({ message: "Invalid invite code" });
 
@@ -57,7 +75,10 @@ router.post("/join", authenticate, async (req, res) => {
       await company.save();
     }
 
-    await User.findByIdAndUpdate(req.user.id, { company: company._id, role: "member" });
+    await User.findByIdAndUpdate(req.user.id, {
+      company: company._id,
+      role: "member",
+    });
 
     const updatedUser = await User.findById(req.user.id);
     const token = await issueToken(updatedUser);
@@ -145,5 +166,36 @@ router.post("/members/add", authenticate, async (req, res) => {
     res.status(500).json({ message: "Failed to add member" });
   }
 });
+
+router.post("/leave", authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user.company) {
+      return res.status(400).json({ message: "You are not in a workspace" });
+    }
+
+    const company = await Company.findById(user.company);
+    if (company) {
+      company.members = company.members.filter(
+        (m) => m.toString() !== req.user.id
+      );
+      await company.save();
+    }
+
+    await User.findByIdAndUpdate(req.user.id, {
+      company: null,
+      role: "member",
+    });
+
+    const updatedUser = await User.findById(req.user.id);
+    const token = await issueToken(updatedUser);
+
+    res.json({ message: "Left workspace", token, user: updatedUser });
+  } catch (err) {
+    console.error("Leave company error:", err);
+    res.status(500).json({ message: "Failed to leave workspace" });
+  }
+});
+
 
 module.exports = router;

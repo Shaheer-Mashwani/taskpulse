@@ -179,6 +179,7 @@ router.patch("/:id/status", authenticate, async (req, res) => {
   try {
     const io = req.app.get("io");
     const { status } = req.body;
+
     if (!["pending", "working", "done"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
@@ -186,14 +187,23 @@ router.patch("/:id/status", authenticate, async (req, res) => {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
-    const isMember = task.members.some((m) => m.toString() === req.user.id);
-    if (!isMember) return res.status(403).json({ message: "Not a member of this task" });
+    // Only the task creator can change status
+    if (task.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({
+        message: "Only the task creator can change the status",
+      });
+    }
 
     task.status = status;
     await task.save();
 
     const user = await User.findById(req.user.id);
-    await logSystemMessage(io, task._id, req.user.id, `${user.name} changed status to "${status}"`);
+    await logSystemMessage(
+      io,
+      task._id,
+      req.user.id,
+      `${user.name} changed status to "${status}"`
+    );
 
     io.to(task._id.toString()).emit("task-updated", task);
     res.json({ task });
@@ -202,5 +212,4 @@ router.patch("/:id/status", authenticate, async (req, res) => {
     res.status(500).json({ message: "Failed to update status" });
   }
 });
-
 module.exports = router;

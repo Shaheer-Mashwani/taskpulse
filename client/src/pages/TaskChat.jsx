@@ -21,12 +21,16 @@ function DelegationPanel({ task, user, onClose }) {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
+    let isMounted = true;
     axiosInstance.get("/api/company/members")
       .then((res) => {
-        const filtered = res.data.members.filter((m) => m._id !== user._id);
-        setMembers(filtered);
+        if (isMounted) {
+          const filtered = res.data.members.filter((m) => m._id !== user._id);
+          setMembers(filtered);
+        }
       })
       .catch(() => {});
+    return () => { isMounted = false; };
   }, [user._id]);
 
   const toggle = (id) => {
@@ -44,30 +48,35 @@ function DelegationPanel({ task, user, onClose }) {
     setError("");
     setSuccess("");
     try {
-      const endpoint = mode === "delegate" ? "delegate" : "add-assignee";
-      const selectedMember = members.find((m) => selected.includes(m._id));
-      if (!selectedMember) return;
-
       if (mode === "delegate") {
+        const selectedMember = members.find((m) => selected.includes(m._id));
+        if (!selectedMember) return;
         await axiosInstance.post(`/api/tasks/${task._id}/delegate`, {
           email: selectedMember.email,
           note,
         });
       } else {
-        for (const memberId of selected) {
+        // Optimized: Fire API requests concurrently instead of blocking sequential iterations
+        const requests = selected.map((memberId) => {
           const member = members.find((m) => m._id === memberId);
           if (member) {
-            await axiosInstance.post(`/api/tasks/${task._id}/add-assignee`, {
+            return axiosInstance.post(`/api/tasks/${task._id}/add-assignee`, {
               email: member.email,
               note,
             });
           }
-        }
+          return Promise.resolve();
+        });
+        await Promise.all(requests);
       }
+      
       setSuccess(mode === "delegate" ? "Task delegated!" : "Member(s) added!");
       setSelected([]);
       setNote("");
-      setTimeout(() => { setSuccess(""); onClose(); }, 1500);
+      setTimeout(() => { 
+        setSuccess(""); 
+        onClose(); 
+      }, 1500);
     } catch (err) {
       setError(err.response?.data?.message || "Action failed");
     } finally {
@@ -205,33 +214,45 @@ export default function TaskChat() {
   const [uploading, setUploading] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
   const [showDelegation, setShowDelegation] = useState(false);
+  
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const loadData = async () => {
-    const [taskRes, msgRes] = await Promise.all([
-      axiosInstance.get(`/api/tasks/${id}`),
-      axiosInstance.get(`/api/messages/${id}`),
-    ]);
-    setTask(taskRes.data.task);
-    setMessages(msgRes.data.messages);
-  };
-
+  // Extracted and optimized to properly use inside standard reactive execution context hooks
   useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [taskRes, msgRes] = await Promise.all([
+          axiosInstance.get(`/api/tasks/${id}`),
+          axiosInstance.get(`/api/messages/${id}`),
+        ]);
+        setTask(taskRes.data.task);
+        setMessages(msgRes.data.messages);
+      } catch (err) {
+        console.error("Failed to fetch task information context", err);
+      }
+    };
+
     loadData();
     socket.emit("join-task", id);
-    socket.on("new-message", (msg) => {
+
+    const handleNewMessage = (msg) => {
       if (msg.task === id || msg.task?.toString() === id) {
         setMessages((prev) => [...prev, msg]);
       }
-    });
-    socket.on("task-updated", (updated) => {
+    };
+
+    const handleTaskUpdated = (updated) => {
       if (updated._id === id) setTask(updated);
-    });
+    };
+
+    socket.on("new-message", handleNewMessage);
+    socket.on("task-updated", handleTaskUpdated);
+
     return () => {
       socket.emit("leave-task", id);
-      socket.off("new-message");
-      socket.off("task-updated");
+      socket.off("new-message", handleNewMessage);
+      socket.off("task-updated", handleTaskUpdated);
     };
   }, [id]);
 
@@ -259,12 +280,21 @@ export default function TaskChat() {
       if (file.type.startsWith("audio/")) type = "audio";
       else if (file.type.startsWith("video/")) type = "video";
       socket.emit("send-message", { taskId: id, senderId: user._id, type, content: res.data.url, fileName: res.data.fileName });
-    } catch { alert("Upload failed"); }
-    finally { setUploading(false); e.target.value = ""; }
+    } catch { 
+      alert("Upload failed"); 
+    } finally { 
+      setUploading(false); 
+      e.target.value = ""; 
+    }
   };
 
   const handleStatusChange = async (status) => {
-    await axiosInstance.patch(`/api/tasks/${id}/status`, { status });
+    try {
+      const res = await axiosInstance.patch(`/api/tasks/${id}/status`, { status });
+      setTask(res.data.task); // Instant local sync fallback matching backend modification return formats
+    } catch (err) {
+      console.error("Status update execution rejected", err);
+    }
   };
 
   if (!task) return (
@@ -277,7 +307,7 @@ export default function TaskChat() {
     </div>
   );
 
-  const sStyle = statusConfig[task.status];
+  const sStyle = statusConfig[task.status] || statusConfig.pending;
   const isOverdue = task.deadline && new Date(task.deadline) < new Date() && task.status !== "done";
 
   return (
@@ -288,7 +318,7 @@ export default function TaskChat() {
         .msg-out { background: linear-gradient(135deg, var(--brand) 0%, var(--brand-mid) 100%); border-radius: 18px 4px 18px 18px; color: white; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.15s ease; color: var(--ink-soft); box-shadow: none; }
         .icon-btn:hover { background: var(--surface-sunken); transform: none; }
-        .send-btn { width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 10px rgba(79,70,229,0.35); }
+        .send-btn { width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 10px rgba(79,70,229,0.35); background: var(--brand); border: none; cursor: pointer; }
         .send-btn:hover { transform: scale(1.05); }
         @media (max-width: 640px) {
           .task-header { 
@@ -326,7 +356,6 @@ export default function TaskChat() {
           flexShrink: 0,
         }}
       >
-        {/* Back icon */}
         <button
           className="icon-btn"
           onClick={() => navigate("/dashboard")}
@@ -338,7 +367,6 @@ export default function TaskChat() {
           </svg>
         </button>
 
-        {/* Task info */}
         <div style={{ flex: 1, minWidth: 0, width: "100%" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
             <b className="task-header-title" style={{ fontFamily: "var(--font-display)", fontSize: "15px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "220px" }}>
@@ -366,7 +394,6 @@ export default function TaskChat() {
           </p>
         </div>
 
-        {/* Right-side actions */}
         <div 
           className="task-header-right-actions"
           style={{ 
@@ -377,24 +404,39 @@ export default function TaskChat() {
             flexWrap: "nowrap"
           }}
         >
-          {/* Status selector */}
-          <select
-            value={task.status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            style={{
+          {/* Fixed Safe Optional Chaining for task creator evaluation logic */}
+          {task.createdBy?._id === user._id ? (
+            <select
+              value={task.status}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              style={{
+                background: sStyle.bg,
+                color: sStyle.text,
+                fontWeight: 600,
+                border: "none",
+                borderRadius: "20px",
+                padding: "5px 12px",
+                fontSize: "12px",
+                cursor: "pointer",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              <option value="pending">⏳ Pending</option>
+              <option value="working">⚡ Working</option>
+              <option value="done">✅ Done</option>
+            </select>
+          ) : (
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: "4px",
               background: sStyle.bg, color: sStyle.text,
-              fontWeight: 600, border: "none", borderRadius: "20px",
-              padding: "5px 12px", fontSize: "12px", cursor: "pointer",
-              fontFamily: "var(--font-mono)",
-              flexShrink: 0,
-            }}
-          >
-            <option value="pending">⏳ Pending</option>
-            <option value="working">⚡ Working</option>
-            <option value="done">✅ Done</option>
-          </select>
+              fontSize: "12px", fontFamily: "var(--font-mono)",
+              fontWeight: 600, padding: "5px 12px", borderRadius: "20px",
+            }}>
+              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: sStyle.dot, display: "inline-block" }} />
+              {task.status}
+            </span>
+          )}
 
-          {/* Assign/Delegate button */}
           <button
             onClick={() => setShowDelegation((v) => !v)}
             style={{
@@ -411,7 +453,6 @@ export default function TaskChat() {
             👥 Assign
           </button>
 
-          {/* Members panel toggle */}
           <button
             className="icon-btn"
             onClick={() => setShowPanel((v) => !v)}
@@ -427,7 +468,6 @@ export default function TaskChat() {
           </button>
         </div>
 
-        {/* Delegation dropdown */}
         {showDelegation && (
           <DelegationPanel
             task={task}
@@ -439,7 +479,6 @@ export default function TaskChat() {
 
       {/* ── MAIN BODY ── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
-        {/* Chat area */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div
             className="chat-area"
@@ -497,71 +536,60 @@ export default function TaskChat() {
                   )}
 
                   {msg.type === "audio" && (
-  <div style={{
-    background: isMe
-      ? "linear-gradient(135deg, var(--brand) 0%, var(--brand-mid) 100%)"
-      : "var(--surface)",
-    borderRadius: isMe ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
-    padding: "10px 14px",
-    border: isMe ? "none" : "1px solid var(--border)",
-    boxShadow: "var(--shadow-sm)",
-    maxWidth: "min(260px, 75vw)",
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-  }}>
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <span style={{ fontSize: "18px" }}>🎙️</span>
-      <span style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: isMe ? "rgba(255,255,255,0.85)" : "var(--ink-soft)" }}>
-        Voice message
-      </span>
-    </div>
-    <audio
-      controls
-      src={msg.content}
-      style={{
-        width: "100%",
-        height: "32px",
-        borderRadius: "8px",
-        accentColor: isMe ? "white" : "var(--brand)",
-      }}
-    />
-  </div>
-)}
+                    <div style={{
+                      background: isMe ? "linear-gradient(135deg, var(--brand) 0%, var(--brand-mid) 100%)" : "var(--surface)",
+                      borderRadius: isMe ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
+                      padding: "10px 14px",
+                      border: isMe ? "none" : "1px solid var(--border)",
+                      boxShadow: "var(--shadow-sm)",
+                      maxWidth: "min(260px, 75vw)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "18px" }}>🎙️</span>
+                        <span style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: isMe ? "rgba(255,255,255,0.85)" : "var(--ink-soft)" }}>
+                          Voice message
+                        </span>
+                      </div>
+                      <audio
+                        controls
+                        src={msg.content}
+                        style={{ width: "100%", height: "32px", borderRadius: "8px", accentColor: isMe ? "white" : "var(--brand)" }}
+                      />
+                    </div>
+                  )}
 
                   {msg.type === "video" && (
                     <video controls src={msg.content} style={{ maxWidth: "min(300px, 80vw)", borderRadius: "14px", boxShadow: "var(--shadow-sm)" }} />
                   )}
 
                   {msg.type === "file" && (
-  <a
-    href={msg.content}
-    target="_blank"
-    rel="noreferrer"
-    style={{
-      background: isMe ? "rgba(255,255,255,0.15)" : "var(--surface)",
-      border: `1px solid ${isMe ? "rgba(255,255,255,0.3)" : "var(--border)"}`,
-      borderRadius: isMe ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
-      padding: "10px 14px",
-      display: "inline-flex",
-      alignItems: "center",
-      gap: "8px",
-      textDecoration: "none",
-      color: isMe ? "white" : "var(--brand)",
-      fontSize: "13px",
-      fontWeight: 500,
-      boxShadow: "var(--shadow-sm)",
-      maxWidth: "min(260px, 75vw)",
-      wordBreak: "break-word",
-    }}
-  >
-    📄 {msg.fileName
-      ? msg.fileName.length > 25
-        ? msg.fileName.slice(0, 22) + "..."
-        : msg.fileName
-      : "File attachment"}
-  </a>
-)}
+                    <a
+                      href={msg.content}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        background: isMe ? "rgba(255,255,255,0.15)" : "var(--surface)",
+                        border: `1px solid ${isMe ? "rgba(255,255,255,0.3)" : "var(--border)"}`,
+                        borderRadius: isMe ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
+                        padding: "10px 14px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        textDecoration: "none",
+                        color: isMe ? "white" : "var(--brand)",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                        boxShadow: "var(--shadow-sm)",
+                        maxWidth: "min(260px, 75vw)",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      📄 {msg.fileName ? (msg.fileName.length > 25 ? msg.fileName.slice(0, 22) + "..." : msg.fileName) : "File attachment"}
+                    </a>
+                  )}
                 </div>
               );
             })}
@@ -614,7 +642,6 @@ export default function TaskChat() {
               }}
             />
 
-            {/* Paper plane send button */}
             <button
               className="send-btn"
               onClick={handleSend}

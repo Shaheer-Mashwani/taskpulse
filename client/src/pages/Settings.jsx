@@ -4,30 +4,32 @@ import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
 import { applyTheme, getSavedTheme } from "../utils/useTheme";
 
-/*function applyTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  localStorage.setItem("theme", theme);
-}
-*/
 export default function Settings() {
-  const { user, logout } = useAuth();
+  // Added 'login' to the destructured properties from useAuth
+  const { user, logout, login } = useAuth(); 
   const navigate = useNavigate();
   const [company, setCompany] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [clearing, setClearing] = useState(null);
   const [copied, setCopied] = useState(false);
   const [theme, setTheme] = useState(getSavedTheme);
+  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
-    axiosInstance.get("/api/company/me").then((res) => setCompany(res.data.company));
-    axiosInstance.get("/api/tasks").then((res) => setTasks(res.data.tasks));
+    axiosInstance.get("/api/company/me")
+      .then((res) => setCompany(res.data.company))
+      .catch((err) => console.error("Error fetching company:", err));
+      
+    axiosInstance.get("/api/tasks")
+      .then((res) => setTasks(res.data.tasks))
+      .catch((err) => console.error("Error fetching tasks:", err));
   }, []);
 
   const handleToggleTheme = () => {
-  const next = theme === "light" ? "dark" : "light";
-  applyTheme(next);
-  setTheme(next);
-};
+    const next = theme === "light" ? "dark" : "light";
+    applyTheme(next);
+    setTheme(next);
+  };
 
   const handleClearChat = async (taskId) => {
     if (!window.confirm("Clear all messages in this task chat? This cannot be undone.")) return;
@@ -46,6 +48,24 @@ export default function Settings() {
     navigator.clipboard.writeText(company?.inviteCode || "");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleLeaveWorkspace = async () => {
+    if (!window.confirm(
+      "Are you sure you want to leave this workspace? You will lose access to all tasks and chats until you join again."
+    )) return;
+
+    setLeaving(true);
+    try {
+      const res = await axiosInstance.post("/api/company/leave");
+      // This now works perfectly because login is extracted from useAuth()
+      login(res.data.token, res.data.user); 
+      navigate("/company-setup");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to leave workspace");
+    } finally {
+      setLeaving(false);
+    }
   };
 
   return (
@@ -143,6 +163,39 @@ export default function Settings() {
               </div>
             </div>
           )}
+
+          {/* Leave workspace block nested neatly inside the Workspace card */}
+          <div style={{
+            marginTop: "16px",
+            paddingTop: "14px",
+            borderTop: "1px solid var(--border)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}>
+            <div>
+              <p style={{ fontSize: "13px", fontWeight: 500, margin: 0 }}>Leave workspace</p>
+              <p className="meta-text" style={{ margin: "2px 0 0" }}>
+                You can rejoin later with the invite code
+              </p>
+            </div>
+            <button
+              onClick={handleLeaveWorkspace}
+              disabled={leaving}
+              style={{
+                background: "var(--danger)",
+                padding: "7px 14px",
+                fontSize: "12px",
+                borderRadius: "10px",
+                boxShadow: "0 2px 8px rgba(220,38,38,0.25)",
+                color: "white",
+                border: "none",
+                cursor: "pointer"
+              }}
+            >
+              {leaving ? "Leaving..." : "Leave"}
+            </button>
+          </div>
         </div>
       )}
 
@@ -166,6 +219,9 @@ export default function Settings() {
                   background: "var(--danger)", padding: "7px 14px",
                   fontSize: "12px", borderRadius: "10px",
                   boxShadow: "0 2px 8px rgba(220,38,38,0.25)",
+                  color: "white",
+                  border: "none",
+                  cursor: "pointer"
                 }}
               >
                 {clearing === task._id ? "Clearing..." : "Clear chat"}
@@ -209,6 +265,9 @@ export default function Settings() {
             boxShadow: "0 2px 8px rgba(220,38,38,0.25)",
             borderRadius: "12px",
             padding: "10px 20px",
+            color: "white",
+            border: "none",
+            cursor: "pointer"
           }}
         >
           Log out
