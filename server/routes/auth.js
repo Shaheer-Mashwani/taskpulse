@@ -3,9 +3,11 @@ const { OAuth2Client } = require("google-auth-library");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const authenticate = require("../middleware/auth");
+
 const router = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Google sign-in
 router.post("/google", async (req, res) => {
   try {
     const { credential } = req.body;
@@ -45,6 +47,7 @@ router.post("/google", async (req, res) => {
   }
 });
 
+// Select role (first time only)
 router.post("/select-role", authenticate, async (req, res) => {
   try {
     const { role } = req.body;
@@ -63,6 +66,7 @@ router.post("/select-role", authenticate, async (req, res) => {
     user.role = role;
     await user.save();
 
+    // Issue a fresh token with the new role baked in
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
@@ -76,9 +80,39 @@ router.post("/select-role", authenticate, async (req, res) => {
   }
 });
 
-router.get("/me", require("../middleware/auth"), async (req, res) => {
-  const user = await User.findById(req.user.id);
-  res.json({ user });
+// Restore session — called on every page load to verify token is still valid
+router.get("/me", authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-__v");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ user });
+  } catch (err) {
+    console.error("Get me error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Promote a user to admin (admin only)
+router.patch("/promote/:userId", authenticate, async (req, res) => {
+  try {
+    const requester = await User.findById(req.user.id);
+    if (requester.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can promote users" });
+    }
+
+    const target = await User.findById(req.params.userId);
+    if (!target) return res.status(404).json({ message: "User not found" });
+
+    target.role = "admin";
+    await target.save();
+
+    res.json({ user: target });
+  } catch (err) {
+    console.error("Promote error:", err);
+    res.status(500).json({ message: "Failed to promote user" });
+  }
 });
 
 module.exports = router;

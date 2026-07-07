@@ -4,23 +4,53 @@ import { BrowserRouter } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { registerServiceWorker } from "./utils/pushNotifications";
+import { applyTheme, getSavedTheme } from "./utils/useTheme";
 import App from "./App.jsx";
 import "./index.css";
-import { applyTheme, getSavedTheme } from "./utils/useTheme";
 
 function Root() {
   const { loading } = useAuth();
 
   useEffect(() => {
-  registerServiceWorker();
-  applyTheme(getSavedTheme());
-}, []);
+    // Register service worker for push notifications
+    registerServiceWorker();
+    // Apply saved theme (dark/light) immediately on load
+    applyTheme(getSavedTheme());
+  }, []);
 
+  // While we verify the stored token with the server,
+  // show a full-screen loading state so the user never
+  // sees a flash of the login page before being redirected
   if (loading) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "var(--bg)", gap: "16px" }}>
-        <div style={{ width: "40px", height: "40px", borderRadius: "50%", border: "3px solid var(--brand)", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
-        <p style={{ fontFamily: "var(--font-mono)", fontSize: "13px", color: "var(--ink-soft)" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          background: "var(--bg)",
+          gap: "16px",
+        }}
+      >
+        <div
+          style={{
+            width: "44px",
+            height: "44px",
+            borderRadius: "50%",
+            border: "3px solid var(--brand)",
+            borderTopColor: "transparent",
+            animation: "spin 0.75s linear infinite",
+          }}
+        />
+        <p
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "13px",
+            color: "var(--ink-soft)",
+          }}
+        >
           Restoring session...
         </p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

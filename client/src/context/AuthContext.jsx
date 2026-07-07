@@ -1,9 +1,16 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import axiosInstance from "../api/axiosInstance";
 import { subscribeToPush, unsubscribeFromPush } from "../utils/pushNotifications";
 
 const AuthContext = createContext(null);
 
+// Decode JWT payload without a library
 function parseJwt(token) {
   try {
     const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -19,6 +26,7 @@ function parseJwt(token) {
   }
 }
 
+// Returns true if token is expired or will expire in next 60 seconds
 function isTokenExpired(token) {
   const payload = parseJwt(token);
   if (!payload?.exp) return true;
@@ -28,73 +36,93 @@ function isTokenExpired(token) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
+  // Wipe everything and reset to logged-out state
   const clearSession = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
   }, []);
 
+  // Called after a successful Google sign-in
   const login = useCallback((token, userData) => {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(userData));
     setUser(userData);
-    setError(null);
-    setTimeout(() => subscribeToPush(axiosInstance), 1500);
+    // Subscribe to push notifications after a short delay
+    // so the service worker has time to register first
+    setTimeout(() => subscribeToPush(axiosInstance), 2000);
   }, []);
 
+  // Called when user explicitly clicks logout
   const logout = useCallback(async () => {
-    await unsubscribeFromPush(axiosInstance);
+    try {
+      await unsubscribeFromPush(axiosInstance);
+    } catch {
+      // Don't block logout if push unsubscribe fails
+    }
     clearSession();
   }, [clearSession]);
 
+  // On every page load/refresh — try to restore the session
   useEffect(() => {
-    const restoreSession = async () => {
+    async function restoreSession() {
       const token = localStorage.getItem("token");
-      const storedUser = localStorage.getItem("user");
 
-      if (!token || !storedUser) {
+      // No token at all — user has never logged in or already logged out
+      if (!token) {
         setLoading(false);
         return;
       }
 
+      // Token exists but is already expired — clear it and send to login
       if (isTokenExpired(token)) {
         clearSession();
         setLoading(false);
         return;
       }
 
+      // Token looks valid locally — confirm with the server
+      // This also gets the latest user data (role, company, etc.)
       try {
         const res = await axiosInstance.get("/api/auth/me");
         const freshUser = res.data.user;
+
+        // Keep localStorage in sync with server
         localStorage.setItem("user", JSON.stringify(freshUser));
         setUser(freshUser);
-        setTimeout(() => subscribeToPush(axiosInstance), 1500);
+
+        // Re-subscribe to push notifications
+        setTimeout(() => subscribeToPush(axiosInstance), 2000);
       } catch (err) {
+        // Server rejected the token
+        // Could be expired, tampered, or user deleted
         clearSession();
-        setError("Your session expired. Please sign in again.");
       } finally {
         setLoading(false);
       }
-    };
+    }
 
     restoreSession();
   }, [clearSession]);
 
+  // Global 401 handler — if any API call gets rejected mid-session
+  // (token expired while user was active), log them out automatically
   useEffect(() => {
-    const interceptor = axiosInstance.interceptors.response.use(
-      (response) => response,
+    const id = axiosInstance.interceptors.response.use(
+      (res) => res,
       (err) => {
-        if (err.response?.status === 401) clearSession();
+        if (err.response?.status === 401) {
+          clearSession();
+        }
         return Promise.reject(err);
       }
     );
-    return () => axiosInstance.interceptors.response.eject(interceptor);
+    return () => axiosInstance.interceptors.response.eject(id);
   }, [clearSession]);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, error }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
