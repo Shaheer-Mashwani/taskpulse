@@ -94,7 +94,7 @@ export function AuthProvider({ children }) {
 
         // Re-subscribe to push notifications
         setTimeout(() => subscribeToPush(axiosInstance), 2000);
-      } catch (err) {
+      } catch {
         // Server rejected the token
         // Could be expired, tampered, or user deleted
         clearSession();
