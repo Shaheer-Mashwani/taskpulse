@@ -4,8 +4,9 @@ const STATIC_ASSETS = [
   "/",
   "/dashboard",
   "/manifest.json",
-  "/icon-192.svg",
-  "/icon-512.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/apple-touch-icon.png",
 ];
 
 // Install — cache static assets
@@ -82,8 +83,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: data.icon || "/icon-192.svg",
-      badge: data.badge || "/badge-72.svg",
+      icon: data.icon || "/icon-192.png",
+      badge: data.badge || "/badge-72.png",
       tag: data.tag || "taskpulse",
       renotify: true,
       data: data.data || {},

@@ -8,28 +8,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="TaskPulse" />
-    
-    <!-- This links to your manifest -->
     <link rel="manifest" href="/manifest.json" />
-    
-    <!-- FIXED: Changed from .svg to .png -->
-    <link rel="apple-touch-icon" href="/icon-192.png" />
-    
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>TaskPulse</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-
-    <!-- NEW: Registering your service worker -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(() => console.log("Service Worker Registered Successfully"))
-            .catch((err) => console.log("Service Worker registration failed: ", err));
-        });
-      }
-    </script>
   </body>
 </html>
