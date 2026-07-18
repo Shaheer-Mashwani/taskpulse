@@ -29,7 +29,7 @@ router.post("/google", async (req, res) => {
         email,
         name,
         avatar: picture,
-        role: "pending",
+        role: "member",
       });
       isNewUser = true;
     }

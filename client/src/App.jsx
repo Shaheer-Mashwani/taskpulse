@@ -1,6 +1,5 @@
 import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
-import SelectRole from "./pages/SelectRole";
 import CompanySetup from "./pages/CompanySetup";
 import Dashboard from "./pages/Dashboard";
 import TaskChat from "./pages/TaskChat";
@@ -11,9 +10,6 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
-      <Route path="/select-role" element={
-        <ProtectedRoute requireRole={false} requireCompany={false}><SelectRole /></ProtectedRoute>
-      } />
       <Route path="/company-setup" element={
         <ProtectedRoute requireCompany={false}><CompanySetup /></ProtectedRoute>
       } />

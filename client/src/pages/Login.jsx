@@ -8,22 +8,22 @@ export default function Login() {
   const { login } = useAuth();
 
   const handleSuccess = async (credentialResponse) => {
-    try {
-      const res = await axiosInstance.post("/api/auth/google", {
-        credential: credentialResponse.credential,
-      });
-      login(res.data.token, res.data.user);
-      if (res.data.isNewUser || res.data.user.role === "pending") {
-        navigate("/select-role");
-      } else if (!res.data.user.company) {
-        navigate("/company-setup");
-      } else {
-        navigate("/dashboard");
-      }
-    } catch (err) {
-      console.error("Login failed:", err);
+  try {
+    const res = await axiosInstance.post("/api/auth/google", {
+      credential: credentialResponse.credential,
+    });
+    login(res.data.token, res.data.user);
+
+    // Skip role selection — go straight to company setup or dashboard
+    if (!res.data.user.company) {
+      navigate("/company-setup");
+    } else {
+      navigate("/dashboard");
     }
-  };
+  } catch (err) {
+    console.error("Login failed:", err);
+  }
+};
 
   return (
     <div style={{
