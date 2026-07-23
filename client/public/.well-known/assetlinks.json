@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.taskpulse.app",
+      "sha256_cert_fingerprints": [
+        "BC:C3:59:77:74:AA:25:F4:12:A6:F0:E6:96:14:46:AE:29:CB:64:8F:7A:4D:42:A2:19:DE:1F:66:F4:15:55:78"
+      ]
+    }
+  }
+]
