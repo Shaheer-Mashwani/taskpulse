@@ -12,38 +12,43 @@ const app = express();
 
 /**
  * =================================
- * ✅ CORS CONFIG (CLEAN FIX)
+ * ✅ CORS CONFIG (FINAL WORKING)
  * =================================
  */
-
 
 const allowedOrigins = [
   "http://localhost:5173",
   "https://taskpulse-fawn.vercel.app",
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
+app.use(
+  cors({
+    origin: allowedOrigins, // ✅ NO function (important)
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  })
+);
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+// ✅ Handle preflight properly
+app.options(
+  "*",
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
 
-    console.error("❌ CORS blocked:", origin);
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // VERY IMPORTANT
+// ✅ Trust proxy (for cookies / auth)
 app.set("trust proxy", 1);
+
+app.use(express.json());
+
 /**
  * =================================
  * ✅ SERVER + SOCKET.IO
  * =================================
  */
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -54,7 +59,6 @@ const io = new Server(server, {
   },
 });
 
-// Make io available in routes
 app.set("io", io);
 
 /**
@@ -62,6 +66,7 @@ app.set("io", io);
  * ✅ SOCKET HANDLERS
  * =================================
  */
+
 const registerSocketHandlers = require("./socket/socketHandlers");
 registerSocketHandlers(io);
 
@@ -70,6 +75,7 @@ registerSocketHandlers(io);
  * ✅ ROUTES
  * =================================
  */
+
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/tasks", require("./routes/tasks"));
 app.use("/api/messages", require("./routes/messages"));
@@ -82,6 +88,7 @@ app.use("/api/push", require("./routes/push"));
  * ✅ HEALTH CHECK
  * =================================
  */
+
 app.get("/", (req, res) => {
   res.send("✅ TaskPulse API running");
 });
@@ -91,6 +98,7 @@ app.get("/", (req, res) => {
  * ✅ DATABASE
  * =================================
  */
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
@@ -101,6 +109,7 @@ mongoose
  * ✅ START SERVER
  * =================================
  */
+
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
