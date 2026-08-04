@@ -12,7 +12,7 @@ const app = express();
 
 /**
  * =================================
- * ✅ CORS CONFIG (FINAL WORKING)
+ * ✅ CORS CONFIG (FIXED)
  * =================================
  */
 
@@ -21,24 +21,18 @@ const allowedOrigins = [
   "https://taskpulse-fawn.vercel.app",
 ];
 
-app.use(
-  cors({
-    origin: allowedOrigins, // ✅ NO function (important)
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  })
-);
+const corsOptions = {
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  maxAge: 86400, // Caches OPTIONS preflight checks for 24 hours
+};
 
-// ✅ Handle preflight properly
-app.options(
-  "*",
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-  })
-);
+// Apply CORS globally (handles both normal requests AND OPTIONS preflight for all routes)
+app.use(cors(corsOptions));
 
-// ✅ Trust proxy (for cookies / auth)
+// ✅ Trust proxy (Required when behind Nginx for cookies / auth)
 app.set("trust proxy", 1);
 
 app.use(express.json());
@@ -52,11 +46,7 @@ app.use(express.json());
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
+  cors: corsOptions, // Reuse the same exact CORS config
 });
 
 app.set("io", io);
