@@ -12,7 +12,7 @@ const app = express();
 
 /**
  * =================================
- * ✅ CORS CONFIG (FINAL FIX)
+ * ✅ CORS CONFIG (CLEAN FIX)
  * =================================
  */
 const allowedOrigins = [
@@ -20,33 +20,29 @@ const allowedOrigins = [
   "https://taskpulse-fawn.vercel.app",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // allow mobile apps / Postman / no-origin requests
-      if (!origin) return callback(null, true);
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (Postman, mobile apps)
+    if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        console.error("❌ CORS blocked:", origin);
-        return callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-// Optional fallback (helps in edge cases)
-app.use((req, res, next) => {
-  res.header(
-    "Access-Control-Allow-Origin",
-    "https://taskpulse-fawn.vercel.app"
-  );
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Headers", "*");
-  next();
-});
+    console.error("❌ CORS blocked:", origin);
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+};
+
+// Apply CORS
+app.use(cors(corsOptions));
+
+// Handle preflight requests properly
+app.options("*", cors(corsOptions));
+
+// Trust proxy (IMPORTANT for cookies / Google auth in production)
+app.set("trust proxy", 1);
 
 app.use(express.json());
 
