@@ -15,14 +15,15 @@ const app = express();
  * ✅ CORS CONFIG (CLEAN FIX)
  * =================================
  */
+
+
 const allowedOrigins = [
   "http://localhost:5173",
   "https://taskpulse-fawn.vercel.app",
 ];
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (Postman, mobile apps)
+  origin: function (origin, callback) {
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
@@ -35,17 +36,9 @@ const corsOptions = {
   credentials: true,
 };
 
-// Apply CORS
 app.use(cors(corsOptions));
-
-// Handle preflight requests properly
-app.options("*", cors(corsOptions));
-
-// Trust proxy (IMPORTANT for cookies / Google auth in production)
+app.options("*", cors(corsOptions)); // VERY IMPORTANT
 app.set("trust proxy", 1);
-
-app.use(express.json());
-
 /**
  * =================================
  * ✅ SERVER + SOCKET.IO
