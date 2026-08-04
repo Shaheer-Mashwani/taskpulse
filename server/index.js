@@ -12,31 +12,33 @@ const app = express();
 
 /**
  * =================================
- * ✅ CORS CONFIG (FIXED)
+ * ✅ CORS CONFIG (DYNAMIC ORIGIN FIX)
  * =================================
  */
-
 const allowedOrigins = [
   "http://localhost:5173",
   "https://taskpulse-fawn.vercel.app",
 ];
 
 const corsOptions = {
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
-  maxAge: 86400, // Caches OPTIONS preflight checks for 24 hours
+  optionsSuccessStatus: 200,
 };
 
-// Apply CORS globally (handles both normal requests AND OPTIONS preflight for all routes)
+// 1. Global CORS middleware
 app.use(cors(corsOptions));
 
-// ✅ Trust proxy (Required when behind Nginx for cookies / auth)
-app.set("trust proxy", 1);
-
-app.use(express.json());
-
+// 2. Explicit Preflight responder for all routes
+app.options("*", cors(corsOptions));
 /**
  * =================================
  * ✅ SERVER + SOCKET.IO
