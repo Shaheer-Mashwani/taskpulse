@@ -17,6 +17,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "https://taskpulse-fawn.vercel.app",
+  "https://localhost",
 ];
 
 app.use((req, res, next) => {
