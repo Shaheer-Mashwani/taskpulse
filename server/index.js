@@ -3,7 +3,6 @@ dns.setDefaultResultOrder("ipv4first");
 
 const express = require("express");
 const http = require("http");
-const cors = require("cors");
 const mongoose = require("mongoose");
 const { Server } = require("socket.io");
 require("dotenv").config();
@@ -12,7 +11,7 @@ const app = express();
 
 /**
  * =================================
- * ✅ CORS CONFIG (DYNAMIC ORIGIN FIX)
+ * ✅ BULLETPROOF MANUAL CORS CONFIG
  * =================================
  */
 const allowedOrigins = [
@@ -20,25 +19,38 @@ const allowedOrigins = [
   "https://taskpulse-fawn.vercel.app",
 ];
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
-  optionsSuccessStatus: 200,
-};
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-// 1. Global CORS middleware
-app.use(cors(corsOptions));
+  // Echo allowed origin dynamically
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
 
-// 2. Explicit Preflight responder for all routes
-app.options("*", cors(corsOptions));
+  // Force credentials and headers on every response
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With, Accept"
+  );
+
+  // Instantly handle preflight OPTIONS checks with 200 OK
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
+
+// ✅ Trust proxy (Required when behind Nginx for cookies / auth)
+app.set("trust proxy", 1);
+
+app.use(express.json());
+
 /**
  * =================================
  * ✅ SERVER + SOCKET.IO
@@ -48,7 +60,11 @@ app.options("*", cors(corsOptions));
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: corsOptions, // Reuse the same exact CORS config
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
 
 app.set("io", io);
