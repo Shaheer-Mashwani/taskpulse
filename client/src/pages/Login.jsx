@@ -1,8 +1,15 @@
-import { useGoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Browser } from "@capacitor/browser";
+import { App } from "@capacitor/app";
+
+// 🔧 Paste the Android OAuth Client ID you just created in Google Cloud Console below
+const ANDROID_CLIENT_ID = "1015674570627-mbeg6it0l9l4iven3nd1523l8tp71pt1.apps.googleusercontent.com";
+
+// Must exactly match the "android:scheme" you set in AndroidManifest.xml
+const REDIRECT_URI = "com.example.app:/oauth2redirect";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -10,49 +17,95 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setLoading(true);
-      setError("");
-      try {
-        // Exchange Google access token for user info
-        const userInfoRes = await fetch(
-          "https://www.googleapis.com/oauth2/v3/userinfo",
-          {
-            headers: {
-              Authorization: `Bearer ${tokenResponse.access_token}`,
-            },
-          }
-        );
-        const userInfo = await userInfoRes.json();
-
-        // Send to our backend
-        const res = await axiosInstance.post("/api/auth/google-token", {
-          access_token: tokenResponse.access_token,
-          userInfo,
-        });
-
-        login(res.data.token, res.data.user);
-
-        if (!res.data.user.company) {
-          navigate("/company-setup");
-        } else {
-          navigate("/dashboard");
+  const handleTokenLogin = async (access_token) => {
+    setLoading(true);
+    setError("");
+    try {
+      const userInfoRes = await fetch(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
         }
-      } catch (err) {
-        console.error("Login failed:", err);
-        setError("Login failed. Please try again.");
-      } finally {
-        setLoading(false);
+      );
+      const userInfo = await userInfoRes.json();
+
+      const res = await axiosInstance.post("/api/auth/google-token", {
+        access_token,
+        userInfo,
+      });
+
+      login(res.data.token, res.data.user);
+
+      if (!res.data.user.company) {
+        navigate("/company-setup");
+      } else {
+        navigate("/dashboard");
       }
-    },
-    onError: (err) => {
-      console.error("Google error:", err);
-      setError("Google sign-in was cancelled or failed.");
+    } catch (err) {
+      console.error("Login failed:", err);
+      setError("Login failed. Please try again.");
+    } finally {
       setLoading(false);
-    },
-    flow: "implicit",
-  });
+    }
+  };
+
+  // Listen for the app being reopened via the custom URL scheme redirect
+  useEffect(() => {
+    const sub = App.addListener("appUrlOpen", async (data) => {
+      try {
+        await Browser.close();
+      } catch (e) {
+        // Browser may already be closed, ignore
+      }
+
+      const url = new URL(data.url);
+      // Google returns the token after a "#" fragment, e.g. com.example.app:/oauth2redirect#access_token=...
+      const fragment = url.hash ? url.hash.substring(1) : url.search.substring(1);
+      const params = new URLSearchParams(fragment);
+      const access_token = params.get("access_token");
+      const oauthError = params.get("error");
+
+      if (oauthError) {
+        setError("Google sign-in was cancelled or failed.");
+        setLoading(false);
+        return;
+      }
+
+      if (access_token) {
+        handleTokenLogin(access_token);
+      }
+    });
+
+    return () => {
+      sub.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const openGoogleLogin = async () => {
+    setError("");
+    setLoading(true);
+
+    const params = new URLSearchParams({
+      client_id: ANDROID_CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: "token",
+      scope: "openid email profile",
+      prompt: "select_account",
+    });
+
+    try {
+      await Browser.open({
+        url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
+      });
+    } catch (err) {
+      console.error("Failed to open browser:", err);
+      setError("Could not open sign-in page.");
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -195,11 +248,7 @@ export default function Login() {
 
           {/* Custom Google Sign-In Button */}
           <button
-            onClick={() => {
-              setError("");
-              setLoading(true);
-              handleGoogleLogin();
-            }}
+            onClick={openGoogleLogin}
             disabled={loading}
             style={{
               width: "100%",
