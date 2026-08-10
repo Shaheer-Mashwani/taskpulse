@@ -2,14 +2,10 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
-import { Browser } from "@capacitor/browser";
-import { App } from "@capacitor/app";
+import { GoogleSignIn } from "@capawesome/capacitor-google-sign-in";
 
-// 🔧 Paste the Android OAuth Client ID you just created in Google Cloud Console below
-const ANDROID_CLIENT_ID = "1015674570627-mbeg6it0l9l4iven3nd1523l8tp71pt1.apps.googleusercontent.com";
-
-// Must exactly match the "android:scheme" you set in AndroidManifest.xml
-const REDIRECT_URI = "com.example.app:/oauth2redirect";
+// Must be your WEB client ID (the same one already in client/.env as VITE_GOOGLE_CLIENT_ID)
+const WEB_CLIENT_ID = "1015674570627-n7l07ddham1h8pj3fjho95u7a8noo87p.apps.googleusercontent.com";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -17,23 +13,18 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleTokenLogin = async (access_token) => {
-    setLoading(true);
-    setError("");
-    try {
-      const userInfoRes = await fetch(
-        "https://www.googleapis.com/oauth2/v3/userinfo",
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-          },
-        }
-      );
-      const userInfo = await userInfoRes.json();
+  useEffect(() => {
+    GoogleSignIn.initialize({ clientId: WEB_CLIENT_ID });
+  }, []);
 
-      const res = await axiosInstance.post("/api/auth/google-token", {
-        access_token,
-        userInfo,
+  const handleGoogleLogin = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const result = await GoogleSignIn.signIn();
+
+      const res = await axiosInstance.post("/api/auth/google", {
+        credential: result.idToken,
       });
 
       login(res.data.token, res.data.user);
@@ -47,62 +38,6 @@ export default function Login() {
       console.error("Login failed:", err);
       setError("Login failed. Please try again.");
     } finally {
-      setLoading(false);
-    }
-  };
-
-  // Listen for the app being reopened via the custom URL scheme redirect
-  useEffect(() => {
-    const sub = App.addListener("appUrlOpen", async (data) => {
-      try {
-        await Browser.close();
-      } catch (e) {
-        // Browser may already be closed, ignore
-      }
-
-      const url = new URL(data.url);
-      // Google returns the token after a "#" fragment, e.g. com.example.app:/oauth2redirect#access_token=...
-      const fragment = url.hash ? url.hash.substring(1) : url.search.substring(1);
-      const params = new URLSearchParams(fragment);
-      const access_token = params.get("access_token");
-      const oauthError = params.get("error");
-
-      if (oauthError) {
-        setError("Google sign-in was cancelled or failed.");
-        setLoading(false);
-        return;
-      }
-
-      if (access_token) {
-        handleTokenLogin(access_token);
-      }
-    });
-
-    return () => {
-      sub.remove();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const openGoogleLogin = async () => {
-    setError("");
-    setLoading(true);
-
-    const params = new URLSearchParams({
-      client_id: ANDROID_CLIENT_ID,
-      redirect_uri: REDIRECT_URI,
-      response_type: "token",
-      scope: "openid email profile",
-      prompt: "select_account",
-    });
-
-    try {
-      await Browser.open({
-        url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
-      });
-    } catch (err) {
-      console.error("Failed to open browser:", err);
-      setError("Could not open sign-in page.");
       setLoading(false);
     }
   };
@@ -248,7 +183,7 @@ export default function Login() {
 
           {/* Custom Google Sign-In Button */}
           <button
-            onClick={openGoogleLogin}
+            onClick={handleGoogleLogin}
             disabled={loading}
             style={{
               width: "100%",
