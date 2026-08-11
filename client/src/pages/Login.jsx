@@ -2,10 +2,14 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
+import { Capacitor } from "@capacitor/core";
 import { GoogleSignIn } from "@capawesome/capacitor-google-sign-in";
+import { useGoogleLogin } from "@react-oauth/google";
 
 // Must be your WEB client ID (the same one already in client/.env as VITE_GOOGLE_CLIENT_ID)
 const WEB_CLIENT_ID = "1015674570627-n7l07ddham1h8pj3fjho95u7a8noo87p.apps.googleusercontent.com";
+
+const isNative = Capacitor.isNativePlatform();
 
 export default function Login() {
   const navigate = useNavigate();
@@ -13,11 +17,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // --- Native (Android/iOS) setup ---
   useEffect(() => {
-    GoogleSignIn.initialize({ clientId: WEB_CLIENT_ID });
+    if (isNative) {
+      GoogleSignIn.initialize({ clientId: WEB_CLIENT_ID });
+    }
   }, []);
 
-  const handleGoogleLogin = async () => {
+  const handleNativeLogin = async () => {
     setError("");
     setLoading(true);
     try {
@@ -39,6 +46,59 @@ export default function Login() {
       setError("Login failed. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --- Web setup (unchanged, original working flow) ---
+  const handleWebLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      setError("");
+      try {
+        const userInfoRes = await fetch(
+          "https://www.googleapis.com/oauth2/v3/userinfo",
+          {
+            headers: {
+              Authorization: `Bearer ${tokenResponse.access_token}`,
+            },
+          }
+        );
+        const userInfo = await userInfoRes.json();
+
+        const res = await axiosInstance.post("/api/auth/google-token", {
+          access_token: tokenResponse.access_token,
+          userInfo,
+        });
+
+        login(res.data.token, res.data.user);
+
+        if (!res.data.user.company) {
+          navigate("/company-setup");
+        } else {
+          navigate("/dashboard");
+        }
+      } catch (err) {
+        console.error("Login failed:", err);
+        setError("Login failed. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: (err) => {
+      console.error("Google error:", err);
+      setError("Google sign-in was cancelled or failed.");
+      setLoading(false);
+    },
+    flow: "implicit",
+  });
+
+  const handleGoogleLogin = () => {
+    if (isNative) {
+      handleNativeLogin();
+    } else {
+      setError("");
+      setLoading(true);
+      handleWebLogin();
     }
   };
 
